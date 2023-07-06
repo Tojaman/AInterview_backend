@@ -773,4 +773,4 @@ FodyWeavers.xsd
 
 # End of https://www.toptal.com/developers/gitignore/api/python,django,visualstudio,pycharm
 
-secrets.json
+임시저장.py
