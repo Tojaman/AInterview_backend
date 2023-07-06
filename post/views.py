@@ -21,5 +21,6 @@ class PostApplication(APIView):
             post = Post.objects.get(id=post_id)
             serializer = PostSerializer(post)
             return JsonResponse(serializer.data)
+        
         except Post.DoesNotExist:
             return JsonResponse(serializer.errors, status=404)
