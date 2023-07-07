@@ -8,11 +8,14 @@ from .serializers import VoiceFileSerializer
 from drf_yasg.utils import swagger_auto_schema
 from .open_api_params import get_params, post_params
 from dotenv import load_dotenv
+from channels.generic.websocket import AsyncWebsocketConsumer
 import os
 import openai
 import json
+import asyncio
+import httpx
 
-class VoiceFileView(APIView):
+class VoiceFileView(APIView, ChatConsumer):
     @swagger_auto_schema(manual_parameters=get_params)
     def get(self, request):
         VoiceFiles = VoiceFile.objects.first() # VoiceFile 모델의 첫 번째 객체 가져옴
@@ -33,12 +36,32 @@ class VoiceFileView(APIView):
         audio_file = open("whisper/audio.mp3", "rb")
         
         # 음성을 텍스트로 변환하고 변환된 텍스트를 transcription에 저장
-        transcript = openai.Audio.transcribe("whisper-1", audio_file)
+        # transcript = openai.Audio.transcribe("whisper-1", audio_file)
+        # transcription = transcript['text'] # txt로 변환한 내용
+        
+        # 음성을 영어 텍스트로 변환하고 변환된 텍스트를 transcription에 저장
+        transcript = openai.Audio.translate("whisper-1", audio_file)
         transcription = transcript['text'] # txt로 변환한 내용
         
-        # VoiceFile 모델의 transcription 인스턴스에 변환된 텍스트를 저장
+        # # VoiceFile 모델의 transcription 인스턴스에 변환된 텍스트를 저장
         VoiceFiles.transcription = transcription
         VoiceFiles.save()
+        
+        
+        
+        messege = VoiceFiles.transcription
+        
+        completion = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": "I'll introduce myself for a minute, so please evaluate me in Korean."},
+                {"role": "assistant", "content": "ok"},
+                {"role": "user", "content": transcription}]
+        )
+        
+        # gpt 답변을 gpt_answer에 넣음
+        VoiceFiles.gpt_answer = completion.choices[0].message.content
         
         # Response객체를 생성하여 데이터와 상태 코드 반환
         return Response(serializer.data, status=status.HTTP_200_OK)

@@ -13,7 +13,6 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 import os
 import environ
-import my_settings
 
 
 
@@ -51,6 +50,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'whisper',
     'drf_yasg',
+    'channels',
 ]
 
 MIDDLEWARE = [
