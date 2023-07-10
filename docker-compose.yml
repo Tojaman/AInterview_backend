@@ -1,0 +1,70 @@
+# yml 파일 포맷의 version 설정
+version: "3"
+
+# 띄울 컨테이너 목록
+services:
+  # RabbitMQ
+  rabbitmq:
+    container_name: rabbitmq_service
+    image: rabbitmq:3.7.14-management-alpine # 웹 UI management 툴 포함
+    # 환경변수 설정
+    environment:
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+    ports:
+      - "5672:5672" # rabbitMQ default port
+      - "15672:15672" # UI를 위한 port
+
+  # Django container
+  django:
+    # 컨테이너 명
+    container_name: django_service
+    # django 라는 이름으로 로컬에 이미지를 저장
+    # -> django의 프로젝트 명으로 바꿈
+    image: django
+    # docker build 옵션
+    build:
+      # docker build 명령어를 실행할 디렉토리 경로
+      context: .
+      # 지정할 Dockerfile 경로
+      dockerfile: ./dockerfile
+    # 환경 변수 설정
+    environment:
+      - RABBITMQ_USER=tojaman
+      - RABBITMQ_PASSWORD=4886
+      - RABBITMQ_HOST=rabbitmq
+    # 현재 디렉토리를 컨테이너 내의 /home/에 mount
+    volumes:
+      - ./:/home/
+    # 작업 폴더 지정
+    working_dir: /home/
+    # 실행할 명령어
+    command: >
+      bash -c "python3 manage.py migrate
+      && python3 manage.py runserver"
+    # 호스트 OS와 컨테이너의 포트를 바인딩
+    ports:
+      - "8000:8000"
+    # 호스트 OS에 포트를 공개하지 않고 컨테이너만 포트를 공개 (현재는 주석)
+    #expose :
+    #  - "8000"
+    # 컨테이너를 실행하는 종속성을 정의
+    depends_on: # rabbitmq 컨테이너 먼저 실행되도록 의존성 설정
+      - rabbitmq
+
+      # Celery
+  celery:
+    container_name: celery_service
+    # django에서 로컬에 저장한 django 이미지를 재사용
+    image: django
+    environment:
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+      - RABBITMQ_HOST=rabbitmq
+    volumes:
+      - ./:/home/
+    working_dir: /home/
+    # Celery Worker 실행
+    command: celery -A ainterview worker --loglevel=info --pool=solo
+    depends_on: # django 컨테이너 먼저 실행되도록 의존성 설정
+      - django

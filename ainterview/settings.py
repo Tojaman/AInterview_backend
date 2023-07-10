@@ -48,6 +48,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'django_celery_beat',
+    'django_celery_results',
     'whisper',
     'drf_yasg',
     'channels',
@@ -138,3 +140,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
+# Celery
+# CELERY_BROKER_URL = 'amqp://tojaman:4886@localhost:15672/'  # RabbitMQ 연결 URL
+# CELERY_BROKER_URL = 'amqp://localhost'  # 로컬 테스트용
+# CELERY_BROKER_URL = 'amqp://tojaman:4886@127.0.0.1:5672/'
+CELERY_BROKER_URL = 'amqp://guest:guest@rabbitmq:5672/'
+CELERY_RESULT_BACKEND = 'django-db'  # Celery 작업 결과를 Django DB에 저장할 경우 설정
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'

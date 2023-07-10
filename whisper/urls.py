@@ -7,3 +7,4 @@ urlpatterns = [
     #path('post/', PostVoiceFile.as_view()),
     #url(r'^data_analysis/uploadfile/$', 'blog.data_analysis.upload_file'),
 ]
+

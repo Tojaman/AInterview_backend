@@ -774,3 +774,4 @@ FodyWeavers.xsd
 # End of https://www.toptal.com/developers/gitignore/api/python,django,visualstudio,pycharm
 
 임시저장.py
+chatgpt_비동기호출_코드.py
