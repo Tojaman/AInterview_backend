@@ -154,3 +154,12 @@ CELERY_RESULT_BACKEND = 'django-db'  # Celery 작업 결과를 Django DB에 저�
 CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
+
+
+# 멀티 파트를 처리할 수 있도록 함.
+REST_FRAMEWORK = {
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.MultiPartParser',
+        'rest_framework.parsers.FormParser'
+    ],
+}

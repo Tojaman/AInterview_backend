@@ -11,7 +11,12 @@ from .tasks import process_whisper_data
 from django.core.files.base import ContentFile
 from .models import Answer
 import os
-from .serializers import RequestVoiceSerializer,ResponseVoiceSerializer
+from .serializers import ResponseVoiceSerializer
+from django.core.files.temp import NamedTemporaryFile
+from rest_framework.parsers import MultiPartParser
+from rest_framework.decorators import action
+from drf_yasg import openapi
+
 
 load_dotenv()
 openai.api_key = os.getenv("GPT_API_KEY")
@@ -19,7 +24,7 @@ openai.api_key = os.getenv("GPT_API_KEY")
 
 # 기본 인터뷰
 class DefaultInterview(APIView):
-    
+    parser_classes = [MultiPartParser]
     # 처음 데이터를 받아야 하는 경우 -> 음성 데이터는 없음. 그냥 GPT 질문 시작.
     @swagger_auto_schema(responses={"200":ResponseVoiceSerializer})
     def get(self, request):
@@ -89,54 +94,63 @@ class DefaultInterview(APIView):
     
     
     # 음성 데이터를 받아야 하는 경우
-    @swagger_auto_schema(query_serializer=RequestVoiceSerializer, responses={"200":ResponseVoiceSerializer})
-    def post(self, request):
+    @swagger_auto_schema(
+        operation_description='Upload container excel, if the columns and data are valid. Containers will be created. '
+                              'If container with such name already exists, it will be update instead',
+        operation_id='Upload container excel',
+        manual_parameters=[openapi.Parameter(
+                            name="voice_file",
+                            in_=openapi.IN_FORM,
+                            type=openapi.TYPE_FILE,
+                            required=True,
+                            description="Document"
+                            )],
+        responses={400: 'Invalid data in uploaded file',
+                   200: 'Success'},
+    )
+    @action(detail=False, methods=['post'], parser_classes=(MultiPartParser, ), name='upload-excel', url_path='upload-excel')
+    def post(self, request, format=None):
         
         self.conversation = []
-        
-        
-        
 
-        #     # 답변을 받고, 응답을 해주는 부분 -> 음성 파일 추출 필요
-            
-            
-        #     # 음성 파일을 body로 부터 추출하고, wav 파일로 저장.
-        #     base64_audio = request.POST.get('audio_data')
-        #     if base64_audio:
-        #         audio_data = base64.b64decode(base64_audio)
-        #         file = ContentFile(audio_data, name='audio.wav')
-            
-        
-        #     self.conversation.append(
-        #         {
-        #             "role": "user",
-        #             "content": "Let's do a job interview simulation. You're an interviewer and I'm an applicant. When I ask you to start taking interview, then start asking questions. I will say the phrase “start the interview” for you to start. Ask one question at a time. Then, ask another question after I provided the answer. Continue this process until I ask you to stop. Please say 'Yes' if you understood my instructions.",
-        #         }
-        #     )
-        #     self.conversation.append(
-        #         {
-        #             "role": "assistant",
-        #             "content": "Yes. I am playing the role of the interviewer. I'll do my best.",
-        #         }
-        #     )
-        #     self.conversation.append(
-        #         {
-        #             "role": "user",
-        #             "content": "You can only ask me some questions from now on. Don't say anything other than a question. Please just say 'Explain the applicant.' if you understood my instructions.",
-        #         }
-        #     )
-        #     self.conversation.append(
-        #         {"role": "assistant", "content": "Explain the applicant."}
-        #     )
-        #     self.conversation.append(
-        #         {
-        #             "role": "user",
-        #             "content": "Start the interview. I will apply to Naver as a front-end developer. Also, I am a new front-end applicant. Please prepare challenging and common questions for interviewers when applying for Naver Front Developer. If I answer, tell me okay and present me the next question you prepared earlier. Now ask the question.",
-        #         },
-        #     )
+        # 답변을 받고, 응답을 해주는 부분 -> 음성 파일 추출 필요
+        # 음성 파일을 추출하고, wav 파일로 저장 -> 오디오를 텍스트로 변환.
+        audio_file = request.FILES["voice_file"]
+       
+        print(audio_file)
+        transcript = openai.Audio.transcribe("whisper-1", audio_file)
+        transcription = transcript['text'] 
 
-        #     # Response객체를 생성하여 데이터와 상태 코드 반환
-        #     return Response(message, status=status.HTTP_200_OK)
+        # self.conversation.append(
+        #     {
+        #         "role": "user",
+        #         "content": "Let's do a job interview simulation. You're an interviewer and I'm an applicant. When I ask you to start taking interview, then start asking questions. I will say the phrase “start the interview” for you to start. Ask one question at a time. Then, ask another question after I provided the answer. Continue this process until I ask you to stop. Please say 'Yes' if you understood my instructions.",
+        #     }
+        # )
+        # self.conversation.append(
+        #     {
+        #         "role": "assistant",
+        #         "content": "Yes. I am playing the role of the interviewer. I'll do my best.",
+        #     }
+        # )
+        # self.conversation.append(
+        #     {
+        #         "role": "user",
+        #         "content": "You can only ask me some questions from now on. Don't say anything other than a question. Please just say 'Explain the applicant.' if you understood my instructions.",
+        #     }
+        # )
+        # self.conversation.append(
+        #     {"role": "assistant", "content": "Explain the applicant."}
+        # )
+        # self.conversation.append(
+        #     {
+        #         "role": "user",
+        #         "content": "Start the interview. I will apply to Naver as a front-end developer. Also, I am a new front-end applicant. Please prepare challenging and common questions for interviewers when applying for Naver Front Developer. If I answer, tell me okay and present me the next question you prepared earlier. Now ask the question.",
+        #     },
+        # )
+
+        # Response객체를 생성하여 데이터와 상태 코드 반환
+        return Response(transcription, status=status.HTTP_200_OK)
     
     
         
@@ -154,7 +168,6 @@ class DefaultInterview(APIView):
         message = completion.choices[0].message['content']
         return message 
     
-
 
 # 상황 부여 면접 
 class SituationInterview(APIView):
