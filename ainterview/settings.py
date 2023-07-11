@@ -50,7 +50,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_celery_beat',
     'django_celery_results',
-    'whisper',
+    'speak_to_chat',
     'drf_yasg',
     'channels',
 ]
@@ -91,8 +91,12 @@ WSGI_APPLICATION = 'ainterview.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'ainterview_db',
+        'USER': 'root',
+        'PASSWORD': 'interview_pw',
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
 }
 
