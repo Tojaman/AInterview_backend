@@ -59,8 +59,10 @@ class LogoutView(APIView):
         request_body = RefreshTokenSerializer)
     def post(self, request):
         try:
-            refresh_token = request.data['refresh']
+            # refresh_token = request.data['refresh']
+            refresh_token = request.data
             token = RefreshToken(refresh_token)
+
             # 로그아웃 시 해당 token을 blacklist해서 auth를 위해 사용 불가하게 만든다.
             token.blacklist()
 
