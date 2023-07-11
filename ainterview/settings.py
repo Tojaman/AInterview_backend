@@ -14,19 +14,17 @@ import os
 from dotenv import load_dotenv
 from datetime import timedelta
 from pathlib import Path
-import os
-import environ
 
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-env = environ.Env(
-    DEBUG=(bool, False)
-)
-
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+# env = os.environ.Env(
+#     DEBUG=(bool, False)
+# )
+#
+# os.environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 
 # Quick-start development settings - unsuitable for production
@@ -102,7 +100,7 @@ DATABASES = {
         'USER': os.environ.get("MYSQL_USER"),
         'PASSWORD': os.environ.get("MYSQL_PASSWORD"),
         'HOST': 'localhost',
-        'PORT': '3306',
+        'PORT': os.environ.get("MYSQL_PORT"),
     }
 }
 

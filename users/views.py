@@ -1,10 +1,11 @@
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import RegisterSerializer, LoginSerializer
+from .serializers import RegisterSerializer, LoginSerializer, RefreshTokenSerializer
 from django.contrib.auth import get_user_model
 
 # 유저 모델 불러오기
@@ -54,9 +55,8 @@ class LoginView(generics.GenericAPIView):
 class LogoutView(APIView):
 
     @swagger_auto_schema(
-        operation_id="로그아웃 (토큰 blacklist)",
-        responses={200: 'OK'}
-    )
+        operation_id="로그아웃 (Refresh token blacklist)",
+        request_body = RefreshTokenSerializer)
     def post(self, request):
         try:
             refresh_token = request.data['refresh']
