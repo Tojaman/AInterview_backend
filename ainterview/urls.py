@@ -6,7 +6,7 @@ from drf_yasg import openapi
 
 schema_view = get_schema_view(
     openapi.Info(
-        title="Post API",
+        title="AInterveiw API",
         default_version="v1",
         description="Ainterview의 API 명세서입니다.",
     ),
@@ -16,9 +16,11 @@ schema_view = get_schema_view(
 
 
 urlpatterns = [
-    path('', include('post.urls')),
-    path('admin/', admin.site.urls),
-    # path('api/', include('post.urls')),
-    path('api/docs/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-
+    #path('admin/', admin.site.urls),
+    
+    #forms
+    path('forms/', include('forms.urls')),
+    
+    #swagger
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui')
 ]
