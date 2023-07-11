@@ -14,5 +14,7 @@ COPY . .
 # 포트 설정 (필요에 따라 수정 가능)
 EXPOSE 8000
 
-# 컨테이너 실행 명령
+# 컨테이너 실행 명령, Celery Worker 실행
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+
+ENV ENV_VARIABLE_NAME=value

@@ -14,9 +14,19 @@ import os
 from dotenv import load_dotenv
 from datetime import timedelta
 from pathlib import Path
+import os
+import environ
+
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+env = environ.Env(
+    DEBUG=(bool, False)
+)
+
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 
 # Quick-start development settings - unsuitable for production
@@ -46,6 +56,9 @@ INSTALLED_APPS = [
     'drf_yasg',
     'forms',
     'users',
+    'django_celery_beat',
+    'django_celery_results',
+    'speak_to_chat',
 ]
 
 MIDDLEWARE = [
@@ -84,10 +97,10 @@ WSGI_APPLICATION = 'ainterview.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'mysql.connector.django',
-        'NAME': 'test',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'ainterview_db',
         'USER': 'root',
-        'PASSWORD': 'thddbfla12',
+        'PASSWORD': 'interview_pw',
         'HOST': 'localhost',
         'PORT': '3306',
     }
@@ -151,7 +164,7 @@ AUTH_USER_MODEL = 'users.User'
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Seoul'
 
 USE_I18N = True
 
@@ -167,3 +180,25 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
+# Celery
+# CELERY_BROKER_URL = 'amqp://tojaman:4886@localhost:15672/'  # RabbitMQ 연결 URL
+# CELERY_BROKER_URL = 'amqp://localhost'  # 로컬 테스트용
+# CELERY_BROKER_URL = 'amqp://tojaman:4886@127.0.0.1:5672/'
+CELERY_BROKER_URL = 'amqp://guest:guest@rabbitmq:5672/'
+CELERY_RESULT_BACKEND = 'django-db'  # Celery 작업 결과를 Django DB에 저장할 경우 설정
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+
+
+# 멀티 파트를 처리할 수 있도록 함.
+REST_FRAMEWORK = {
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.MultiPartParser',
+        'rest_framework.parsers.FormParser'
+    ],
+}
