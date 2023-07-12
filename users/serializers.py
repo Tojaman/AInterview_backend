@@ -57,6 +57,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.save()
         return user
 
+# LogoutView에서 post method swagger test시 request_body로 활용
+class RefreshTokenSerializer(serializers.Serializer):
+    refresh = serializers.CharField(help_text='Refresh token')
 
 # uncomment below code block in case we have to return user information in LoginView
 # class UserSerializer(serializers.ModelSerializer):
