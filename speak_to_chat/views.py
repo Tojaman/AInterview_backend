@@ -19,6 +19,9 @@ from drf_yasg import openapi
 from django.shortcuts import get_object_or_404
 from forms.models import Form
 from .models import Question
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.exceptions import AuthenticationFailed
 
 load_dotenv()
 openai.api_key = os.getenv("GPT_API_KEY")
@@ -223,7 +226,20 @@ class DeepInterview(APIView):
     conversation = []
 
     # 처음 데이터를 받아야 하는 경우 -> 음성 데이터는 없음. 그냥 GPT 질문 시작.
-    @swagger_auto_schema(responses={"200": ResponseVoiceSerializer})
+    @swagger_auto_schema(
+        operation_description="심층 면접 데이터 최초 받기",
+        operation_id="form_id를 입력해주세요.",
+        manual_parameters=[
+            openapi.Parameter(
+                name="form_id",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_INTEGER,
+                required=True,
+                description="form_id",
+            )
+        ],
+        responses={"200": ResponseVoiceSerializer},
+    )
     def get(self, request):
         # 기본 튜닝
         self.default_tuning()
@@ -232,10 +248,11 @@ class DeepInterview(APIView):
         message = self.continue_conversation()
 
         # form_id 받기, 파라미터로 받기
-        form_id = request.get.GET("form_id")
+        form_id = request.GET.get("form_id")
 
-        # Question 테이블에 데이터 추가
-        Question.objects.create(content=message, form_id=form_id)
+        # Question 테이블에 데이터 추가, form Object 얻기
+        form_object = Form.objects.get(id=form_id)
+        Question.objects.create(content=message, form_id=form_object)
 
         return Response(message, status=status.HTTP_200_OK)
 
@@ -279,31 +296,33 @@ class DeepInterview(APIView):
         # 답변을 받고, 응답을 해주는 부분 -> 음성 파일 추출 필요
         # 오디오 파일, 지원 정보 아이디, 질문 아이디를 Request Body로 받음
         audio_file = request.FILES["voice_file"]
-        form_id = request.body["form_id"]
-        question_id = request.body["question_id"]
+        form_id = request.data["form_id"]
+        question_id = request.data["question_id"]
         transcript = openai.Audio.transcribe("whisper-1", audio_file)
         transcription = transcript["text"]
 
         # S3에 업로드하는 로직 필요!
 
         # 답변 테이블에 추가
-        Answer.objects.create(content=transcription, question_id=question_id)
+        question_object = Question.objects.get(question_id=question_id)
+        Answer.objects.create(content=transcription, question_id=question_object)
 
-        form_info = get_object_or_404(Form, id=form_id)
+        form_info = Form.objects.get(id=form_id)
         questions = form_info.questions.all()
 
         # 기본 튜닝
         self.default_tuning()
 
+        print(questions)
         # 질문, 대답 추가.
         for question in questions:
             answer = question.answer
-            self.add_question_answer(question, answer)
+            self.add_question_answer(question.content, answer.content)
 
         message = self.continue_conversation()
 
         # 질문 테이블에 정보 추가
-        Question.objects.create(content=message, form_id=form_id)
+        Question.objects.create(content=message, form_id=form_info)
 
         return Response(message, status=status.HTTP_200_OK)
 
