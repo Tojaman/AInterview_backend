@@ -52,12 +52,14 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
+
     'drf_yasg',
     'forms',
     'users',
     'django_celery_beat',
     'django_celery_results',
     'speak_to_chat',
+
 ]
 
 MIDDLEWARE = [
@@ -96,12 +98,12 @@ WSGI_APPLICATION = 'ainterview.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get("MYSQL_NAME"),
-        'USER': os.environ.get("MYSQL_USER"),
-        'PASSWORD': os.environ.get("MYSQL_PASSWORD"),
+        'ENGINE': 'mysql.connector.django',
+        'NAME': 'ainterview',
+        'USER': 'root',
+        'PASSWORD': 'thddbfla12',
         'HOST': 'localhost',
-        'PORT': os.environ.get("MYSQL_PORT"),
+        'PORT': 3306,
     }
 }
 
@@ -127,8 +129,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+        'rest_framework_simplejwt.authentication.JWTAuthentication'),
 }
 
 SIMPLE_JWT = {

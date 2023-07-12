@@ -2,7 +2,7 @@ from django.db import models
 from users.models import User
 
 class Form(models.Model):
-    user_id = models.ForeignKey(User, on_delete=models.CASCADE, related_name='User_id', db_column='user_id')
+    user_id = models.ForeignKey(User, on_delete=models.CASCADE, related_name='forms', db_column='user_id')
     sector_name = models.CharField(max_length=100, null=False)
     job_name = models.CharField(max_length=100, null=False)
     career = models.CharField(max_length=20, default='신입', null=False)
