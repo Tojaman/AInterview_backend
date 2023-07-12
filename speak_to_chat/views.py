@@ -245,24 +245,27 @@ class DeepInterview(APIView):
         operation_id="음성 파일을 업로드 해주세요.",
         manual_parameters=[
             openapi.Parameter(
+                name="form_id",
+                in_=openapi.IN_FORM,
+                type=openapi.TYPE_INTEGER,
+                required=True,
+                description="지원 정보 아이디",
+            ),
+            openapi.Parameter(
+                name="question_id",
+                in_=openapi.IN_FORM,
+                type=openapi.TYPE_INTEGER,
+                required=True,
+                description="질문 아이디",
+            ),
+            openapi.Parameter(
                 name="voice_file",
                 in_=openapi.IN_FORM,
                 type=openapi.TYPE_FILE,
                 required=True,
                 description="음성 데이터",
-            )
+            ),
         ],
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                "form_id": openapi.Schema(
-                    type=openapi.TYPE_INTEGER, description="지원 정보 아이디"
-                ),
-                "question_id": openapi.Schema(
-                    type=openapi.TYPE_INTEGER, description="질문 아이디"
-                ),
-            },
-        ),
         responses={400: "Invalid data in uploaded file", 200: "Success"},
     )
     @action(
