@@ -1,6 +1,6 @@
-from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status, generics
+from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -14,6 +14,7 @@ User = get_user_model()
 
 # 회원가입
 class RegisterView(APIView):
+    parser_classes = [JSONParser]
     serializer_class = RegisterSerializer
 
     @swagger_auto_schema(
@@ -33,6 +34,7 @@ class RegisterView(APIView):
 
 # 로그인
 class LoginView(generics.GenericAPIView):
+    parser_classes = [JSONParser]
     serializer_class = LoginSerializer
 
     @swagger_auto_schema(operation_id="사용자 로그인")
@@ -53,16 +55,15 @@ class LoginView(generics.GenericAPIView):
 
 # 로그아웃
 class LogoutView(APIView):
-
+    parser_classes = [JSONParser]
     @swagger_auto_schema(
-        operation_id="로그아웃 (Refresh token blacklist)",
-        request_body = RefreshTokenSerializer)
+        request_body=RefreshTokenSerializer,
+        operation_id="로그아웃 (토큰 blacklist)"
+    )
     def post(self, request):
         try:
-            # refresh_token = request.data['refresh']
-            refresh_token = request.data
+            refresh_token = request.data['refresh']
             token = RefreshToken(refresh_token)
-
             # 로그아웃 시 해당 token을 blacklist해서 auth를 위해 사용 불가하게 만든다.
             token.blacklist()
 
