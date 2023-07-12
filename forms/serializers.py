@@ -5,12 +5,13 @@ from .models import Form
 
 
 class FormsSerializer(serializers.ModelSerializer):
-    #questions = ResponseVoiceSerializer(many=True, read_only=True)
+    # questions = ResponseVoiceSerializer(many=True, read_only=True)
     class Meta:
         model = Form
-        fields = ('user_id', 'sector_name', 'job_name', 'career', 'resume')
+        fields = ("sector_name", "job_name", "career", "resume")
+
 
 class FormCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Form
-        fields = ('sector_name', 'job_name', 'career', 'resume')
+        fields = ("sector_name", "job_name", "career", "resume")
