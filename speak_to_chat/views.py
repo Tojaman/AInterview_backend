@@ -18,6 +18,7 @@ from rest_framework.decorators import action
 from drf_yasg import openapi
 from django.shortcuts import get_object_or_404
 from forms.models import Form
+from .models import Question
 
 load_dotenv()
 openai.api_key = os.getenv("GPT_API_KEY")
@@ -220,14 +221,22 @@ class SituationInterview(APIView):
 # 심층 면접 인터뷰
 class DeepInterview(APIView):
     conversation = []
-    
+
     # 처음 데이터를 받아야 하는 경우 -> 음성 데이터는 없음. 그냥 GPT 질문 시작.
     @swagger_auto_schema(responses={"200": ResponseVoiceSerializer})
     def get(self, request):
         # 기본 튜닝
         self.default_tuning()
+
         # 대화 계속하기
         message = self.continue_conversation()
+
+        # form_id 받기, 파라미터로 받기
+        form_id = request.get.GET("form_id")
+
+        # Question 테이블에 데이터 추가
+        Question.objects.create(content=message, form_id=form_id)
+
         return Response(message, status=status.HTTP_200_OK)
 
     # 음성 데이터를 받아야 하는 경우
@@ -240,9 +249,20 @@ class DeepInterview(APIView):
                 in_=openapi.IN_FORM,
                 type=openapi.TYPE_FILE,
                 required=True,
-                description="Document",
+                description="음성 데이터",
             )
         ],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "form_id": openapi.Schema(
+                    type=openapi.TYPE_INTEGER, description="지원 정보 아이디"
+                ),
+                "question_id": openapi.Schema(
+                    type=openapi.TYPE_INTEGER, description="질문 아이디"
+                ),
+            },
+        ),
         responses={400: "Invalid data in uploaded file", 200: "Success"},
     )
     @action(
@@ -253,25 +273,41 @@ class DeepInterview(APIView):
         url_path="upload-voice-file",
     )
     def post(self, request, format=None):
-        
         # 답변을 받고, 응답을 해주는 부분 -> 음성 파일 추출 필요
+        # 오디오 파일, 지원 정보 아이디, 질문 아이디를 Request Body로 받음
         audio_file = request.FILES["voice_file"]
-        form_id = request.form_id["form_id"]
-
+        form_id = request.body["form_id"]
+        question_id = request.body["question_id"]
         transcript = openai.Audio.transcribe("whisper-1", audio_file)
         transcription = transcript["text"]
-        
-        Answer.objects.create(content=transcription)
-        
+
+        # S3에 업로드하는 로직 필요!
+
+        # 답변 테이블에 추가
+        Answer.objects.create(content=transcription, question_id=question_id)
+
         form_info = get_object_or_404(Form, id=form_id)
-        
-        
+        questions = form_info.questions.all()
+
         # 기본 튜닝
         self.default_tuning()
-        
-        
-        
-        
+
+        # 질문, 대답 추가.
+        for question in questions:
+            answer = question.answer
+            self.add_question_answer(question, answer)
+
+        message = self.continue_conversation()
+
+        # 질문 테이블에 정보 추가
+        Question.objects.create(content=message, form_id=form_id)
+
+        return Response(message, status=status.HTTP_200_OK)
+
+    # 질문과 대답 추가
+    def add_question_answer(self, question, answer):
+        self.conversation.append({"role": "assistant", "content": question})
+        self.conversation.append({"role": "assistant", "content": answer})
 
     def continue_conversation(self):
         completion = openai.ChatCompletion.create(
@@ -280,29 +316,28 @@ class DeepInterview(APIView):
 
         message = completion.choices[0].message["content"]
         return message
-    
-    
+
     # 기본 튜닝
     def default_tuning(self):
         # 대화 시작 메시지 추가
         self.conversation.append(
             {
                 "role": "user",
-                "content": "You're an interviewer. When I ask you to 'start interview', then start asking question."
+                "content": "You're an interviewer. When I ask you to 'start interview', then start asking question.",
             }
         )
-        
+
         self.conversation.append(
             {"role": "assistant", "content": "sure. i understand."}
         )
-        
+
         self.conversation.append(
             {
                 "role": "user",
-                "content": "ask only one question at a time in the chat. and ask another question after I provided the answer"
+                "content": "ask only one question at a time in the chat. and ask another question after I provided the answer",
             }
         )
-        
+
         self.conversation.append(
             {"role": "assistant", "content": "sure. i understand."}
         )
@@ -312,11 +347,10 @@ class DeepInterview(APIView):
                 "content": "Don't give me an explanation, a summary, or an appreciation of my answer, you just have to ask me question",
             }
         )
-        
+
         self.conversation.append(
             {"role": "assistant", "content": "sure. i understand."}
         )
-        
 
         self.conversation.append(
             {
@@ -378,15 +412,14 @@ class DeepInterview(APIView):
                 "content": "If you join the company, please describe the vision you dream of. The front-end development job is to develop everything the customer sees. In other words, I think it is making the first impression of Carrot Insurance because it is in charge of the first part that the customer sees. I find this work very attractive and I want to be a key member who can contribute to the development team that sees and reflects customer responses immediately. Devices and browsers are becoming more and more diverse, and in order to provide customers with a web environment that fits them, as a front-end developer, I will act as a reliable bridge between customers and Carrot Insurance. The front-end development sector is trending faster than other sectors. To keep up with this, I will try to learn new technologies and trends steadily without continuing to settle for one skill. We will always strive to implement the user interface and user experience technically and accurately through continuous learning, and we will think from your perspective. I think the expansion of online business will be more severe in the future. As a result, customers will be increasingly exposed to online websites, and I believe that the front-end development job has a vision. For me, who loves to learn and learn new skills, I am confident that Carrot Insurance's front-end development job is the best place to grow together with the competence. start interview",
             }
         )
- 
+
         self.conversation.append(
             {
                 "role": "user",
-                "content":"Now you extract the above self-introduction specifically. Ask a famous and tricky question based on the this extraction. You don't have to show me the extract, just ask me question. and re-extract and ask question when you're done with the tail-biting method. and say only korean. and Don't say anything other than a question from now on. give me a question."
+                "content": "Now you extract the above self-introduction specifically. Ask a famous and tricky question based on the this extraction. You don't have to show me the extract, just ask me question. and re-extract and ask question when you're done with the tail-biting method. and say only korean. and Don't say anything other than a question from now on. give me a question.",
             }
         )
 
-    
 
 # 성향 면접 인터뷰
 class TendancyInterview(APIView):
