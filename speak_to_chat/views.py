@@ -223,6 +223,7 @@ class DeepInterview(APIView):
 
     # 처음 데이터를 받아야 하는 경우 -> 음성 데이터는 없음. 그냥 GPT 질문 시작.
     @swagger_auto_schema(responses={"200": ResponseVoiceSerializer})
+
     def get(self, request):
         # 기본 튜닝
         self.default_tuning()
@@ -235,6 +236,7 @@ class DeepInterview(APIView):
 
         # Question 테이블에 데이터 추가
         Question.objects.create(content=message, form_id=form_id)
+
 
         return Response(message, status=status.HTTP_200_OK)
 
@@ -278,6 +280,7 @@ class DeepInterview(APIView):
         # 답변을 받고, 응답을 해주는 부분 -> 음성 파일 추출 필요
         # 오디오 파일, 지원 정보 아이디, 질문 아이디를 Request Body로 받음
         audio_file = request.FILES["voice_file"]
+
         form_id = request.body["form_id"]
         question_id = request.body["question_id"]
         transcript = openai.Audio.transcribe("whisper-1", audio_file)
@@ -286,8 +289,8 @@ class DeepInterview(APIView):
         # S3에 업로드하는 로직 필요!
 
         # 답변 테이블에 추가
-        Answer.objects.create(content=transcription, question_id=question_id)
 
+        Answer.objects.create(content=transcription, question_id=question_id)
         form_info = get_object_or_404(Form, id=form_id)
         questions = form_info.questions.all()
 

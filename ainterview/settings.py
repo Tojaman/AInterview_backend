@@ -97,6 +97,7 @@ WSGI_APPLICATION = 'ainterview.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
+
     'default': {
         'ENGINE': 'mysql.connector.django',
         'NAME': 'ainterview',
@@ -130,6 +131,7 @@ AUTH_PASSWORD_VALIDATORS = [
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication'),
+
 }
 
 SIMPLE_JWT = {
