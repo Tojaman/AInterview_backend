@@ -96,11 +96,13 @@ WSGI_APPLICATION = "ainterview.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": "ainterview_db",
-        "USER": "root",
-        "PASSWORD": "ainterview_pw",
+        "NAME": os.environ.get("MYSQL_NAME"),
+        "USER": os.environ.get("MYSQL_USER"),
+        "PASSWORD": os.environ.get("MYSQL_PASSWORD"),
         "HOST": "localhost",
-        "PORT": 3306,
+        # docker-compose 사용 시 사용
+        # "HOST": "ainterview_db",
+        "PORT": os.environ.get("MYSQL_PORT"),
     }
 }
 
@@ -125,8 +127,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication"
-    ),
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    )
 }
 
 SIMPLE_JWT = {
