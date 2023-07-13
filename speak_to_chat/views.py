@@ -29,7 +29,6 @@ from rest_framework.exceptions import AuthenticationFailed
 load_dotenv()
 openai.api_key = os.getenv("GPT_API_KEY")
 
-
 # 기본 인터뷰
 class DefaultInterview(APIView):
     parser_classes = [MultiPartParser]

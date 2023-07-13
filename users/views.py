@@ -11,7 +11,6 @@ from django.contrib.auth import get_user_model
 # 유저 모델 불러오기
 User = get_user_model()
 
-
 # 회원가입
 class RegisterView(APIView):
     parser_classes = [JSONParser]

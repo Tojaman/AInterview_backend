@@ -1,4 +1,4 @@
-from django.forms import Form
+from django.http import JsonResponse
 from drf_yasg import openapi
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
@@ -7,28 +7,22 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404, redirect, render
 from drf_yasg.utils import swagger_auto_schema
 from forms.serializers import FormsSerializer, FormCreateSerializer
+from forms.models import Form
+
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 
-# Create your views here.
+from users.models import User
 
+# Create your views here.
 
 # 지원정보 API
 class FormsAllView(APIView):
+    # 사용자 토큰인증
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
-    @swagger_auto_schema(
-        tags=["forms_all"], operation_id="get application informations"
-    )
-    # 지원정보 전체조회
-    def get(self, request):
-        data = Form.objects.all()
-        serializer = FormsSerializer(data, many=True)
-        return Response(serializer.data, status=200)
-
-    # 지원정보 추가
     parameter_token = openapi.Parameter(
         "Authorization",
         openapi.IN_HEADER,
@@ -37,7 +31,19 @@ class FormsAllView(APIView):
     )
 
     @swagger_auto_schema(
-        request_body=FormsSerializer,
+        tags=["forms_all"],
+        manual_parameters=[parameter_token],
+        operation_id="get application informations"
+    )
+    # 지원정보 전체조회
+    def get(request):
+        data = Form.objects.all()
+        serializer = FormsSerializer(data, many=True)
+        return Response(serializer.data, status=200)
+
+    # 지원정보 추가
+    @swagger_auto_schema(
+        request_body=FormCreateSerializer,
         manual_parameters=[parameter_token],
         operation_id="post application informations",
     )
@@ -56,23 +62,24 @@ class FormsAllView(APIView):
 
 
 class FormsUserView(APIView):
-    # 사용자별 지원정보 전체조회
-    def get(self, request):
-        data = Form.objects.filter(user_id=request.user.id)
-        serializer = FormsSerializer(data, many=True)
-        return Response(serializer.data, status=200)
+    #사용자별 지원정보 전체조회
+    # def get(self, request, pk):
+    #     user = User.objects.filter(user=request.user)
+    #     serializer = FormsSerializer(user, many= True)
+    #     return Response(serializer.data, status=200)
 
     # 사용자별 지원정보 상세조회
     def get(self, request, pk):
-        data = get_object_or_404(Form, pk=pk)
-        serializer = FormsSerializer(data)
+        form_obj = Form.objects.filter(id=pk)
+        serializer = FormsSerializer(form_obj, many=True)
         return Response(serializer.data)
 
     # 지원정보 삭제
     def delete(self, request, pk):
-        info = get_object_or_404(Form, pk=pk)
+        info = get_object_or_404(Form, id=pk)
         info.delete()
-        return redirect("form_list")
+        return JsonResponse({'message': 'Form deleted successfully.'})
+        #return redirect("form_list")
 
     # 지원정보 수정
     def put(self, request, pk):
