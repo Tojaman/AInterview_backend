@@ -23,6 +23,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 import random
+from django.http import HttpResponse
 
 load_dotenv()
 openai.api_key = os.getenv("GPT_API_KEY")
@@ -31,6 +32,7 @@ openai.api_key = os.getenv("GPT_API_KEY")
 # 기본 인터뷰
 class DefaultInterview(APIView):
     parser_classes = [MultiPartParser]
+
     # 답변과 상관없이 질문을 랜덤으로 뽑아서 지원자에게 질문
     @swagger_auto_schema(
         operation_description="심층 면접 데이터 최초 받기",
@@ -47,22 +49,21 @@ class DefaultInterview(APIView):
         responses={"200": ResponseVoiceSerializer},
     )
     def get(self, request):
-        
         # 랜덤으로 기본 질문 1개 뽑기
         message = self.pick_random_question()
-        
+
         # form_id 받기, 파라미터로 받기
         form_id = request.GET.get("form_id")
-        
+
         # form_id에 해당하는 Form 객체 생성
         form_object = Form.objects.get(id=form_id)
 
         # Question 테이블에 Form 객체 데이터 추가
         # form_id=form_object : Question의 외래키를 추가하여 연결시킴
         Question.objects.create(content=message, form_id=form_object)
-        
+
         return Response(message, status=status.HTTP_200_OK)
-    
+
     # 음성 데이터를 받아야 하는 경우
     @swagger_auto_schema(
         # API 작업에 대한 설명
@@ -113,30 +114,28 @@ class DefaultInterview(APIView):
         question_id = request.data["question_id"]
         # 음성 -> 텍스트
         transcript = openai.Audio.transcribe("whisper-1", audio_file)
-        transcription = transcript['text']
-        
-        # 
+        transcription = transcript["text"]
+
+        #
         question_object = Question.objects.get(question_id=question_id)
         # Answer.content에 답변 저장
         Answer.objects.create(content=transcription, question_id=question_object)
-        
+
         # 랜덤으로 질문 1개 뽑기
         message = self.pick_random_question()
-        
+
         # id=form_id인 Form 객체 가져오기(get)
         form_object = Form.objects.get(id=form_id)
-        
+
         Question.objects.create(content=message, form_id=form_object)
-        
+
         # Answer.objects.create(content=transcription, question_id=question_id, recode_file='s3_주소')
-        
-        
+
         # Response객체를 생성하여 데이터와 상태 코드 반환
         return Response(transcription, status=status.HTTP_200_OK)
-    
+
     # 질문을 랜덤으로 뽑는 함수
     def pick_random_question(self):
-        
         # 중복 질문이 나오면 다시 뽑음 (그냥 삭제하는 걸로 할까?)
         pick_question = []
         while True:
@@ -156,18 +155,16 @@ class DefaultInterview(APIView):
                 "우리 회사의 단점이 무엇이라고 생각하나요?",
                 "성취를 이룬 경험이 있나요? 그 경험을 설명해주세요.",
                 "과거에 어떤 도전적인 상황을 겪었으며, 그 상황에서 어떻게 대응했나요?",
-                
-                
-                ]
-            
+            ]
+
             message = random.choice(basic_questions_list)
-            
+
             if message in pick_question:
                 continue
-            
+
             pick_question.append(message)
             break
-        
+
         return message
 
 
@@ -250,22 +247,27 @@ class DeepInterview(APIView):
         responses={"200": ResponseVoiceSerializer},
     )
     def get(self, request):
+        form_id = request.GET.get("form_id")
+        # Question 테이블에 데이터 추가, form Object 얻기
+        form_object = Form.objects.get(id=form_id)
+
         # 기본 튜닝
-        self.default_tuning()
+        self.default_tuning(
+            form_object.sector_name,
+            form_object.job_name,
+            form_object.career,
+            form_object.resume,
+        )
 
         # 대화 계속하기
         message = self.continue_conversation()
 
-        # form_id 받기, 파라미터로 받기
-        form_id = request.GET.get("form_id")
-
-        # Question 테이블에 데이터 추가, form Object 얻기
-        form_object = Form.objects.get(id=form_id)
         Question.objects.create(content=message, form_id=form_object)
 
         return Response(message, status=status.HTTP_200_OK)
 
     # 음성 데이터를 받아야 하는 경우
+
     @swagger_auto_schema(
         operation_description="음성 데이터 POST",
         operation_id="음성 파일을 업로드 해주세요.",
@@ -304,6 +306,7 @@ class DeepInterview(APIView):
     def post(self, request, format=None):
         # 답변을 받고, 응답을 해주는 부분 -> 음성 파일 추출 필요
         # 오디오 파일, 지원 정보 아이디, 질문 아이디를 Request Body로 받음
+        self.conversation = []
         audio_file = request.FILES["voice_file"]
         form_id = request.data["form_id"]
         question_id = request.data["question_id"]
@@ -316,22 +319,31 @@ class DeepInterview(APIView):
         question_object = Question.objects.get(question_id=question_id)
         Answer.objects.create(content=transcription, question_id=question_object)
 
-        form_info = Form.objects.get(id=form_id)
-        questions = form_info.questions.all()
+        form_object = Form.objects.get(id=form_id)
+        questions = form_object.questions.all()
 
         # 기본 튜닝
-        self.default_tuning()
+        self.default_tuning(
+            form_object.sector_name,
+            form_object.job_name,
+            form_object.career,
+            form_object.resume,
+        )
 
-        print(questions)
-        # 질문, 대답 추가.
-        for question in questions:
-            answer = question.answer
-            self.add_question_answer(question.content, answer.content)
+        try:
+            # 질문, 대답 추가.
+            for question in questions:
+                answer = question.answer
+                self.add_question_answer(question.content, answer.content)
+        except:
+            error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
+            response = HttpResponse(error_message, status=500)
+            return response
 
         message = self.continue_conversation()
 
         # 질문 테이블에 정보 추가
-        Question.objects.create(content=message, form_id=form_info)
+        Question.objects.create(content=message, form_id=form_object)
 
         return Response(message, status=status.HTTP_200_OK)
 
@@ -349,12 +361,12 @@ class DeepInterview(APIView):
         return message
 
     # 기본 튜닝
-    def default_tuning(self):
+    def default_tuning(self, seletor_name, job_name, career, resume):
         # 대화 시작 메시지 추가
         self.conversation.append(
             {
                 "role": "user",
-                "content": "You're an interviewer. When I ask you to 'start interview', then start asking question.",
+                "content": "You're an interviewer. When I ask you to 'give me a question', then start asking question.",
             }
         )
 
@@ -383,20 +395,19 @@ class DeepInterview(APIView):
             {"role": "assistant", "content": "sure. i understand."}
         )
 
+        # 내용 추가
         self.conversation.append(
             {
                 "role": "user",
-                "content": "I will apply to Naver as a front-end developer. Also, I am a new front-end applicant.",
-            },
-        )
-        self.conversation.append(
-            {"role": "assistant", "content": "sure. i understand."}
-        )
-
-        self.conversation.append(
-            {
-                "role": "user",
-                "content": "Start the interview. I will apply to Naver as a front-end developer. Also, I am a new front-end applicant.",
+                "content": "I will apply to "
+                + seletor_name
+                + " as a "
+                + job_name
+                + ". Also, I am a"
+                + career
+                + " "
+                + job_name
+                + " applicant.",
             },
         )
         self.conversation.append(
@@ -410,7 +421,10 @@ class DeepInterview(APIView):
             },
         )
         self.conversation.append(
-            {"role": "assistant", "content": "sure. i understand."}
+            {
+                "role": "assistant",
+                "content": "sure. i understand. please proceed with your self-introduction.",
+            }
         )
 
         self.conversation.append(
@@ -420,16 +434,10 @@ class DeepInterview(APIView):
             },
         )
         self.conversation.append(
-            {"role": "assistant", "content": "sure. i understand."}
-        )
-        self.conversation.append(
             {
-                "role": "user",
-                "content": "Please indicate your discriminatory strengths in the job you want to apply for.'Communication skills and collaboration skills' Developers believe that collaboration is essential. In fact, if you work at the front end, you will basically communicate with planners, designers, and backend developers, but if you don't have full knowledge of development, I think there will be problems communicating in developmental languages. I studied computer science and theoretical knowledge thoroughly when I was an undergraduate, and most of my major subjects got 'A+' or 'A'. Working on team projects with this complete theoretical knowledge, I was able to choose terms that were as easy as possible to communicate and communicate with the other person easily. Thanks to this, there was no misunderstanding between members due to communication problems in the process of carrying out most team projects. If you do actual work, you may have technical communication or you may not understand it well in the process, but I will make sure that there is no problem with communication by asking politely again with activeness. In addition, I think 'activity' and 'grit' are also important for collaboration ability. When I was working on various team projects during my undergraduate years, including graduation projects, I always tried to find a solution when I encountered something I didn't know while playing my role. When I couldn't solve it, I used to ask politely with 'activity.' I think my 'activity' and 'grit' will motivate the members to collaborate.",
-            },
-        )
-        self.conversation.append(
-            {"role": "assistant", "content": "sure. i understand."}
+                "role": "assistant",
+                "content": "i understand. please proceed with your self-introduction.",
+            }
         )
         self.conversation.append(
             {
@@ -440,14 +448,28 @@ class DeepInterview(APIView):
         self.conversation.append(
             {
                 "role": "assistant",
-                "content": "If you join the company, please describe the vision you dream of. The front-end development job is to develop everything the customer sees. In other words, I think it is making the first impression of Carrot Insurance because it is in charge of the first part that the customer sees. I find this work very attractive and I want to be a key member who can contribute to the development team that sees and reflects customer responses immediately. Devices and browsers are becoming more and more diverse, and in order to provide customers with a web environment that fits them, as a front-end developer, I will act as a reliable bridge between customers and Carrot Insurance. The front-end development sector is trending faster than other sectors. To keep up with this, I will try to learn new technologies and trends steadily without continuing to settle for one skill. We will always strive to implement the user interface and user experience technically and accurately through continuous learning, and we will think from your perspective. I think the expansion of online business will be more severe in the future. As a result, customers will be increasingly exposed to online websites, and I believe that the front-end development job has a vision. For me, who loves to learn and learn new skills, I am confident that Carrot Insurance's front-end development job is the best place to grow together with the competence. start interview",
+                "content": "i understand. please proceed with your third self-introduction.",
             }
         )
 
         self.conversation.append(
             {
                 "role": "user",
-                "content": "Now you extract the above self-introduction specifically. Ask a famous and tricky question based on the this extraction. You don't have to show me the extract, just ask me question. and re-extract and ask question when you're done with the tail-biting method. and say only korean. and Don't say anything other than a question from now on. give me a question.",
+                "content": "If you join the company, please describe the vision you dream of. The front-end development job is to develop everything the customer sees. In other words, I think it is making the first impression of Carrot Insurance because it is in charge of the first part that the customer sees. I find this work very attractive and I want to be a key member who can contribute to the development team that sees and reflects customer responses immediately. Devices and browsers are becoming more and more diverse, and in order to provide customers with a web environment that fits them, as a front-end developer, I will act as a reliable bridge between customers and Carrot Insurance. The front-end development sector is trending faster than other sectors. To keep up with this, I will try to learn new technologies and trends steadily without continuing to settle for one skill. We will always strive to implement the user interface and user experience technically and accurately through continuous learning, and we will think from your perspective. I think the expansion of online business will be more severe in the future. As a result, customers will be increasingly exposed to online websites, and I believe that the front-end development job has a vision. For me, who loves to learn and learn new skills, I am confident that Carrot Insurance's front-end development job is the best place to grow together with the competence. start interview",
+            }
+        )
+
+        self.conversation.append(
+            {
+                "role": "assistant",
+                "content": "Thank you for providing your self-introductions.",
+            }
+        )
+
+        self.conversation.append(
+            {
+                "role": "user",
+                "content": "Now you extract the above self-introduction specifically. Ask a famous and tricky question based on the this extraction. You don't have to show me the extract, just ask me question. and re-extract and ask question when you're done with the tail-biting method. and you must say only korean. and Don't say anything other than a question from now on. give me a question.",
             }
         )
 
