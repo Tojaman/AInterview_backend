@@ -24,6 +24,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 import random
 from django.http import HttpResponse
+from django.http import JsonResponse
 
 load_dotenv()
 openai.api_key = os.getenv("GPT_API_KEY")
@@ -119,7 +120,6 @@ class DefaultInterview(APIView):
         transcript = openai.Audio.transcribe("whisper-1", audio_file)
         transcription = transcript["text"]
 
-        #
         question_object = Question.objects.get(question_id=question_id)
         # Answer.content에 답변 저장
         Answer.objects.create(content=transcription, question_id=question_object)
@@ -131,11 +131,16 @@ class DefaultInterview(APIView):
         form_object = Form.objects.get(id=form_id)
 
         Question.objects.create(content=message, form_id=form_object)
-
-        # Answer.objects.create(content=transcription, question_id=question_id, recode_file='s3_주소')
+        
+        QnA = {
+            "QnA": {
+                "Answer": transcription,
+                "다음 질문": message
+            }
+        }
 
         # Response객체를 생성하여 데이터와 상태 코드 반환
-        return Response(transcription, status=status.HTTP_200_OK)
+        return Response(QnA, status=status.HTTP_200_OK)
 
     # 질문을 랜덤으로 뽑는 함수
     def pick_random_question(self):
@@ -527,7 +532,7 @@ class TendancyInterview(APIView):
 
 
 # 특정 form의 질문, 답변 가져오기(get으로 가져오기)
-class Questioninfo(APIView):
+class QnAview(APIView):
     @swagger_auto_schema(
         operation_description="지원 정보와 연결된 질문, 답변 받기",
         operation_id="form_id를 입력해주세요.",
@@ -540,7 +545,7 @@ class Questioninfo(APIView):
                 description="form_id",
             )
         ],
-        responses={"200": ResponseVoiceSerializer},
+        # responses={"200": ResponseVoiceSerializer},
     )
     # form_id와 연결되어 있는 question 객체를 가져온다.
     # form에 질문과 답변이 여러개 들어있으므로 모두 가져온 후 보여줄 수 있어야 한다.
@@ -549,20 +554,26 @@ class Questioninfo(APIView):
         form_id = request.GET.get("form_id")
         # form Object 얻기
         form_object = Form.objects.get(id=form_id)
-        # 특정 form과 연결된 Question, Answer 객체 얻기
-        question_object = Question.objects.get(form_id=form_object)
-        answer_object = Answer.objects.get(form_id=form_object)
         
-        # 질문, 답변 텍스트 가져오기
-        question = question_object.content
-        answer = answer_object.content
+        # 특정 form과 연결된 Question, Answer 객체 리스트로 얻기
+        question_object = Question.objects.filter(form_id=form_object)
         
-        QnA = [
-            {
-                'question': question,
-                'answer': answer
-            }
-        ]
+        QnA = []
+        for i in range(0, len(question_object)-1): # ok
+            answer_object = Answer.objects.get(question_id=question_object[i]) # ok
+            
+            # 질문, 답변 텍스트 가져오기
+            question = question_object[i].content
+            answer = answer_object.content
+            
+            QnA.append(
+                {
+                    'question': question,
+                    'answer': answer
+                }
+            )
         
-        
-        return Response(QnA, status=status.HTTP_200_OK)
+        # QnA 리스트 JSON으로 변환
+        QnA = {'QnA': QnA}
+            
+        return JsonResponse(QnA, status=status.HTTP_200_OK)

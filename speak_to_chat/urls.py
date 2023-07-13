@@ -4,6 +4,7 @@ from .views import (
     SituationInterview,
     DeepInterview,
     TendancyInterview,
+    QnAview,
 )
 
 urlpatterns = [
@@ -11,4 +12,5 @@ urlpatterns = [
     path("situation/", SituationInterview.as_view()),
     path("deep/", DeepInterview.as_view()),
     path("tendancy/", TendancyInterview.as_view()),
+    path("qna/", QnAview.as_view()),
 ]
