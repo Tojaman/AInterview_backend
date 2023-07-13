@@ -49,10 +49,13 @@ class DefaultInterview(APIView):
         responses={"200": ResponseVoiceSerializer},
     )
     def get(self, request):
-        # 랜덤으로 기본 질문 1개 뽑기
-        message = self.pick_random_question()
+        # 최초의 질문은 자기소개로 고정
+        message = "1분 자기소개를 해주세요."
 
         # form_id 받기, 파라미터로 받기
+        # request.GET.get 이해 못함. 공부할 것것
+        # GET : 
+        # get() : 
         form_id = request.GET.get("form_id")
 
         # form_id에 해당하는 Form 객체 생성
@@ -521,3 +524,45 @@ class TendancyInterview(APIView):
 
         message = completion.choices[0].message["content"]
         return message
+
+
+# 특정 form의 질문, 답변 가져오기(get으로 가져오기)
+class Questioninfo(APIView):
+    @swagger_auto_schema(
+        operation_description="지원 정보와 연결된 질문, 답변 받기",
+        operation_id="form_id를 입력해주세요.",
+        manual_parameters=[
+            openapi.Parameter(
+                name="form_id",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_INTEGER,
+                required=True,
+                description="form_id",
+            )
+        ],
+        responses={"200": ResponseVoiceSerializer},
+    )
+    # form_id와 연결되어 있는 question 객체를 가져온다.
+    # form에 질문과 답변이 여러개 들어있으므로 모두 가져온 후 보여줄 수 있어야 한다.
+    def get(self, request):
+        
+        form_id = request.GET.get("form_id")
+        # form Object 얻기
+        form_object = Form.objects.get(id=form_id)
+        # 특정 form과 연결된 Question, Answer 객체 얻기
+        question_object = Question.objects.get(form_id=form_object)
+        answer_object = Answer.objects.get(form_id=form_object)
+        
+        # 질문, 답변 텍스트 가져오기
+        question = question_object.content
+        answer = answer_object.content
+        
+        QnA = [
+            {
+                'question': question,
+                'answer': answer
+            }
+        ]
+        
+        
+        return Response(QnA, status=status.HTTP_200_OK)
