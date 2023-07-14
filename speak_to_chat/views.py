@@ -9,7 +9,7 @@ import openai
 import base64
 from .tasks import process_whisper_data
 from django.core.files.base import ContentFile
-from .models import Answer, Question
+from .models import Answer, Question, GPTAnswer
 import os
 from .serializers import ResponseVoiceSerializer
 from django.core.files.temp import NamedTemporaryFile
@@ -123,12 +123,26 @@ class DefaultInterview(APIView):
         question_object = Question.objects.get(question_id=question_id)
         # Answer.content에 답변 저장
         Answer.objects.create(content=transcription, question_id=question_object)
-
+        
+        # id=form_id인 Form 객체 가져오기(get)
+        form_object = Form.objects.get(id=form_id)
+        
+        # =========================test===============================      
+        # 질문, 답변 텍스트 가져오기
+        question = question_object.content
+        
+        # 모범 답변 생성을 위한 튜닝
+        conversation = self.add_question_answer(question, transcription)
+        # gpt 모범 답변 생성
+        gpt_answer = self.continue_conversation(conversation)
+        # gpt 모범 답변 객체 생성
+        gpt_object = GPTAnswer.objects.create(question_id=question_object, content=gpt_answer)
+        # =========================test===============================
+        
         # 랜덤으로 질문 1개 뽑기
         message = self.pick_random_question()
 
-        # id=form_id인 Form 객체 가져오기(get)
-        form_object = Form.objects.get(id=form_id)
+        
 
         Question.objects.create(content=message, form_id=form_object)
         
@@ -173,6 +187,28 @@ class DefaultInterview(APIView):
             pick_question.append(message)
             break
 
+        return message
+    
+    # 질문과 대답 추가
+    def add_question_answer(self, question, answer):
+        prompt = []
+        message = f"""Improve the answers to the following interview questions with better answers.\
+            Don't explain or say anything, just produce and show better answers\ 
+            Say it in Korean
+            Question: `{question}`\
+            Answer: `{answer}`"""
+        
+        prompt.append({"role": "user",
+            "content": message})
+        
+        return prompt
+
+    def continue_conversation(self, prompt):
+        completion = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo", messages=prompt, temperature=0.9, n=1
+        )
+
+        message = completion.choices[0].message["content"]
         return message
 
 
@@ -526,7 +562,7 @@ class TendancyInterview(APIView):
         completion = openai.ChatCompletion.create(
             model="gpt-3.5-turbo", messages=self.conversation, temperature=0.9, n=1
         )
-
+        
         message = completion.choices[0].message["content"]
         return message
 
@@ -545,7 +581,7 @@ class QnAview(APIView):
                 description="form_id",
             )
         ],
-        # responses={"200": ResponseVoiceSerializer},
+        responses={"200": ResponseVoiceSerializer},
     )
     # form_id와 연결되어 있는 question 객체를 가져온다.
     # form에 질문과 답변이 여러개 들어있으므로 모두 가져온 후 보여줄 수 있어야 한다.
@@ -577,3 +613,55 @@ class QnAview(APIView):
         QnA = {'QnA': QnA}
             
         return JsonResponse(QnA, status=status.HTTP_200_OK)
+
+
+class GPTAnswerview(APIView):
+    @swagger_auto_schema(
+        operation_description="지원 정보와 연결된 질문, 답변, GPT 답변 받기",
+        operation_id="form_id를 입력해주세요.",
+        manual_parameters=[
+            openapi.Parameter(
+                name="form_id",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_INTEGER,
+                required=True,
+                description="form_id",
+            )
+        ],
+        responses={"200": ResponseVoiceSerializer},
+    )
+    def get(self, request):
+        
+        form_id = request.GET.get("form_id")
+        # form Object 얻기
+        form_object = Form.objects.get(id=form_id)
+        
+        # 특정 form과 연결된 Question 객체 리스트로 얻기
+        question_object = Question.objects.filter(form_id=form_object)
+        
+        QnA = []
+        for i in range(0, len(question_object)-1): # ok
+            
+            
+            answer_object = Answer.objects.get(question_id=question_object[i])
+            gptanswer_object = GPTAnswer.objects.get(question_id=question_object[i])
+
+            # 질문, 답변 텍스트 가져오기
+            question_content = question_id=question_object[i].content
+            answer_content = answer_object.content
+            gpt_answer = gptanswer_object.content
+            
+            QnA.append(
+                {
+                    'question': question_content,
+                    'answer': answer_content,
+                    'gptanswer': gpt_answer
+                }
+            )
+        
+        # QnA 리스트 JSON으로 변환
+        QnA = {'QnA': QnA}
+            
+        return JsonResponse(QnA, status=status.HTTP_200_OK)
+    
+    

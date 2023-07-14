@@ -5,6 +5,7 @@ from .views import (
     DeepInterview,
     TendancyInterview,
     QnAview,
+    GPTAnswerview
 )
 
 urlpatterns = [
@@ -13,4 +14,5 @@ urlpatterns = [
     path("deep/", DeepInterview.as_view()),
     path("tendancy/", TendancyInterview.as_view()),
     path("qna/", QnAview.as_view()),
+    path("gptanswer/", GPTAnswerview.as_view()),
 ]

@@ -39,3 +39,21 @@ class Answer(models.Model):
 
     class Meta:
         db_table = "answer"
+
+class GPTAnswer(models.Model):
+    gptanswer_id = models.AutoField(primary_key=True, db_column="question_id")
+    content = models.TextField()
+    question_id = models.OneToOneField(
+        Question, on_delete=models.CASCADE, related_name="gptanswer"
+    )
+    recode_file = models.CharField(max_length=200)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(blank=True, null=True)
+
+    # 나중에 수정 시에 사용
+    def update_date(self):
+        self.updated_at = timezone.now()
+        self.save()
+
+    class Meta:
+        db_table = "gptanswer"
