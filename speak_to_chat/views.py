@@ -510,7 +510,6 @@ class PersonalityInterview(APIView):
 
         Question.objects.create(content=message, form_id=form_object)
 
-
         return Response(message, status=status.HTTP_200_OK)
 
 
@@ -590,97 +589,16 @@ class PersonalityInterview(APIView):
             # 대화 시작 메시지 추가
         self.conversation.append(
             {
-                "role": "user",
-                "content": "You're an interviewer. When I ask you to 'start interview', then start asking question.",
+                "role": "system",
+                "content": "You're a strict interviewer. You don't make any unnecessary expressions asides from giving interview questions.",
             }
-        )
-        self.conversation.append(
-            {"role": "assistant", "content": "sure. i understand."}
         )
         self.conversation.append(
             {
                 "role": "user",
-                "content": "ask only one question at a time in the chat. and ask another question after I provided the answer",
+                "content": 'function_name: [personality_interview] input: ["sector", "job", "career", "resume", "number_of_questions"] rule: [I want you to act as a strict interviewer, asking personality questions for the interviewee. I will provide you with input forms including "sector", "job", "career", "resume", and "number_of_questions". I have given inputs, but you do not have to refer to those. Your task is to simply make common personality questions and provide questions to me. You should create total of "number_of_questions" amount of questions, and provide it once at a time. You should ask the next question only after I have answered to the question. Do not include any explanations or additional information in your response, simply provide the generated question. You should also provide only one question at a time. Example questions would be questions such as "How do you handle stress and pressure?", "If you could change one thing about your personality, what would it be and why?". Remember, these questions are related to personality. Once all questions are done, you should just say "Alright. I will evaluate your answers." You must speak only in Korean during the interview.] personality_interview("IT", "Developer", "Fresher", "Graduated Tech University of Korea, Bachelor\'s degree of Software, has experience with Python Django REST framework.", "3")',
             }
         )
-        self.conversation.append(
-            {"role": "assistant", "content": "sure. i understand."}
-        )
-        self.conversation.append(
-            {
-                "role": "user",
-                "content": "Don't give me an explanation, a summary, or an appreciation of my answer, you just have to ask me question",
-            }
-        )
-        self.conversation.append(
-            {"role": "assistant", "content": "sure. i understand."}
-        )
-        self.conversation.append(
-            {
-                "role": "user",
-                "content": "You must prepare 3 common personality interview questions.",
-            }
-        )
-        self.conversation.append(
-            {"role": "assistant", "content": "sure. i understand."}
-        )
-
-        self.conversation.append(
-            {
-                "role": "user",
-                "content": "From now, I will give you some personality interview questions."
-            }
-        )
-        self.conversation.append(
-            {"role": "assistant", "content": "Ok."}
-        )
-
-        self.conversation.append(
-            {
-                "role": "user",
-                "content": "Do you prefer working in a team or on your own? If you could change one thing about your personality, what would it be and why?"
-            }
-        )
-        self.conversation.append(
-            {"role": "assistant", "content": "Ok. I understand."}
-        )
-
-        self.conversation.append(
-            {
-                "role": "user",
-                "content": "How do you handle stress and pressure? What motivates you? If you could change one thing about your personality, what would it be and why? What are you passionate about"
-            }
-        )
-        self.conversation.append(
-            {"role": "assistant", "content": "Ok. I understand."}
-        )
-
-        self.conversation.append(
-            {
-                "role": "user",
-                "content": "You must randomly extract those examples to use them on interview. You should also make up your own questions based on those questions.",
-            }
-        )
-        self.conversation.append(
-            {"role": "assistant", "content": "ok. i understand."}
-        )
-
-        self.conversation.append(
-            {
-                "role": "user",
-                "content": "When I say 'start interview', you should start giving me questions. Ask only in Korean. Don't ever talk in English when the interview starts.",
-            }
-        )
-        self.conversation.append(
-            {"role": "assistant", "content": "sure. i understand."}
-        )
-        self.conversation.append(
-            {
-                "role": "user",
-                "content": "start interview.",
-            }
-        )
-
 
     # 질문과 대답 추가
     def add_question_answer(self, question, answer):
