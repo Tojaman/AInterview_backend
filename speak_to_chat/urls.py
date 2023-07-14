@@ -7,4 +7,3 @@ urlpatterns = [
     path('deep/', DeepInterview.as_view()),
     path('personality/', PersonalityInterview.as_view())
 ]
-
