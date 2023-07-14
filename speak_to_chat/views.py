@@ -55,8 +55,8 @@ class DefaultInterview(APIView):
 
         # form_id 받기, 파라미터로 받기
         # request.GET.get 이해 못함. 공부할 것것
-        # GET : 
-        # get() : 
+        # GET :
+        # get() :
         form_id = request.GET.get("form_id")
 
         # form_id에 해당하는 Form 객체 생성
@@ -123,35 +123,30 @@ class DefaultInterview(APIView):
         question_object = Question.objects.get(question_id=question_id)
         # Answer.content에 답변 저장
         Answer.objects.create(content=transcription, question_id=question_object)
-        
+
         # id=form_id인 Form 객체 가져오기(get)
         form_object = Form.objects.get(id=form_id)
-        
-        # =========================test===============================      
+
+        # =========================test===============================
         # 질문, 답변 텍스트 가져오기
         question = question_object.content
-        
+
         # 모범 답변 생성을 위한 튜닝
         conversation = self.add_question_answer(question, transcription)
         # gpt 모범 답변 생성
         gpt_answer = self.continue_conversation(conversation)
         # gpt 모범 답변 객체 생성
-        gpt_object = GPTAnswer.objects.create(question_id=question_object, content=gpt_answer)
+        gpt_object = GPTAnswer.objects.create(
+            question_id=question_object, content=gpt_answer
+        )
         # =========================test===============================
-        
+
         # 랜덤으로 질문 1개 뽑기
         message = self.pick_random_question()
 
-        
-
         Question.objects.create(content=message, form_id=form_object)
-        
-        QnA = {
-            "QnA": {
-                "Answer": transcription,
-                "다음 질문": message
-            }
-        }
+
+        QnA = {"QnA": {"Answer": transcription, "다음 질문": message}}
 
         # Response객체를 생성하여 데이터와 상태 코드 반환
         return Response(QnA, status=status.HTTP_200_OK)
@@ -188,7 +183,7 @@ class DefaultInterview(APIView):
             break
 
         return message
-    
+
     # 질문과 대답 추가
     def add_question_answer(self, question, answer):
         prompt = []
@@ -197,10 +192,9 @@ class DefaultInterview(APIView):
             Say it in Korean
             Question: `{question}`\
             Answer: `{answer}`"""
-        
-        prompt.append({"role": "user",
-            "content": message})
-        
+
+        prompt.append({"role": "user", "content": message})
+
         return prompt
 
     def continue_conversation(self, prompt):
@@ -410,110 +404,18 @@ class DeepInterview(APIView):
         self.conversation.append(
             {
                 "role": "user",
-                "content": "You're an interviewer. When I ask you to 'give me a question', then start asking question.",
-            }
-        )
-
-        self.conversation.append(
-            {"role": "assistant", "content": "sure. i understand."}
-        )
-
-        self.conversation.append(
-            {
-                "role": "user",
-                "content": "ask only one question at a time in the chat. and ask another question after I provided the answer",
-            }
-        )
-
-        self.conversation.append(
-            {"role": "assistant", "content": "sure. i understand."}
-        )
-        self.conversation.append(
-            {
-                "role": "user",
-                "content": "Don't give me an explanation, a summary, or an appreciation of my answer, you just have to ask me question",
-            }
-        )
-
-        self.conversation.append(
-            {"role": "assistant", "content": "sure. i understand."}
-        )
-
-        # 내용 추가
-        self.conversation.append(
-            {
-                "role": "user",
-                "content": "I will apply to "
+                "content": 'function_name: [interviewee_info] input: ["Company", "Job", "Career"] rule: [Please act as a skillful interviewer. We will provide the input form including "Company," "Professional," and "Career." Look at the sentences "Company," "Job," and "Career" to get information about me as an interviewee. For example, let\'s say company = IT company, job = web front-end developer, experience = newcomer. Then you can recognize that you\'re a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information. You must speak only in Korean during the interview. and you don\'t have to answer.] function_name: [aggresive_position] rule: [Ask me questions in a tail-to-tail manner about what I answer. There may be technical questions about the answer, and there may be questions that you, as an interviewer, would dig into the answer.. For example, if the question asks, "What\'s your web framework?" the answer is, "React." So the new question is, "What do you use as a health management tool in React, and why do you need this?" It should be the same question. If you don\'t have any more questions, move on to the next topic.] function_name: [self_introduction] input : ["self-introduction"] rule: [We will provide an input form including a "self-introduction." Read this "self-introduction" and extract the content to generate a question. just ask one question.]'
+                + "interviewee_info(Company="
                 + seletor_name
-                + " as a "
+                + ", Job="
                 + job_name
-                + ". Also, I am a"
+                + ", Career="
                 + career
-                + " "
-                + job_name
-                + " applicant.",
-            },
-        )
-        self.conversation.append(
-            {"role": "assistant", "content": "sure. i understand."}
-        )
-
-        self.conversation.append(
-            {
-                "role": "user",
-                "content": "From now on, I will give you a total of three self-introductions. I'll give you one every time I ask a question. Remember each self-introduction and answer 'I understand'. Also, don't ask questions while giving the content.",
-            },
-        )
-        self.conversation.append(
-            {
-                "role": "assistant",
-                "content": "sure. i understand. please proceed with your self-introduction.",
-            }
-        )
-
-        self.conversation.append(
-            {
-                "role": "user",
-                "content": "Please describe any of your experiences so far that you are confident of achieving innovation. 'First challenge in front-end web development' I became interested in technology stacks in front-end web development that I had never encountered when I was undergraduate, and I studied by making projects personally during the second semester from the summer vacation of the fourth grade. I learned HTML and CSS natively and then created a project that uses the JavaScript framework. We selected React and Vue as representative JavaScript frameworks and created 'shopping mall site' and 'movie information search site', respectively. Although there are no objective figures or indicators to prove performance, I was confident that I had increased my web development capabilities in that I had created websites that functioned with technology actually used in my work. In the process of implementing a 'shopping mall site' using React, the components that make up the screen were not difficult to design and style, but there were difficulties in implementing the function of adding and removing products to the shopping cart. The process of using multiple hooks and contexts provided by React, such as useState, useCallback, and useMemo, was unfamiliar and took a long time to implement the function. The 'Movie Information Search Site' linked the movie search API and was the first website to be developed using the API. I used the OMDB API key for API linkage, but there is still a problem that the OMDB API key is exposed on the code, but I thought I became more familiar with Vue by making it using Vue router, bootstrap, and Vue for status management.",
-            },
-        )
-        self.conversation.append(
-            {
-                "role": "assistant",
-                "content": "i understand. please proceed with your self-introduction.",
-            }
-        )
-        self.conversation.append(
-            {
-                "role": "user",
-                "content": "Please indicate your discriminatory strengths in the job you want to apply for.'Communication skills and collaboration skills' Developers believe that collaboration is essential. In fact, if you work at the front end, you will basically communicate with planners, designers, and backend developers, but if you don't have full knowledge of development, I think there will be problems communicating in developmental languages. I studied computer science and theoretical knowledge thoroughly when I was an undergraduate, and most of my major subjects got 'A+' or 'A'. Working on team projects with this complete theoretical knowledge, I was able to choose terms that were as easy as possible to communicate and communicate with the other person easily. Thanks to this, there was no misunderstanding between members due to communication problems in the process of carrying out most team projects. If you do actual work, you may have technical communication or you may not understand it well in the process, but I will make sure that there is no problem with communication by asking politely again with activeness. In addition, I think 'activity' and 'grit' are also important for collaboration ability. When I was working on various team projects during my undergraduate years, including graduation projects, I always tried to find a solution when I encountered something I didn't know while playing my role. When I couldn't solve it, I used to ask politely with 'activity.' I think my 'activity' and 'grit' will motivate the members to collaborate.",
-            },
-        )
-        self.conversation.append(
-            {
-                "role": "assistant",
-                "content": "i understand. please proceed with your third self-introduction.",
-            }
-        )
-
-        self.conversation.append(
-            {
-                "role": "user",
-                "content": "If you join the company, please describe the vision you dream of. The front-end development job is to develop everything the customer sees. In other words, I think it is making the first impression of Carrot Insurance because it is in charge of the first part that the customer sees. I find this work very attractive and I want to be a key member who can contribute to the development team that sees and reflects customer responses immediately. Devices and browsers are becoming more and more diverse, and in order to provide customers with a web environment that fits them, as a front-end developer, I will act as a reliable bridge between customers and Carrot Insurance. The front-end development sector is trending faster than other sectors. To keep up with this, I will try to learn new technologies and trends steadily without continuing to settle for one skill. We will always strive to implement the user interface and user experience technically and accurately through continuous learning, and we will think from your perspective. I think the expansion of online business will be more severe in the future. As a result, customers will be increasingly exposed to online websites, and I believe that the front-end development job has a vision. For me, who loves to learn and learn new skills, I am confident that Carrot Insurance's front-end development job is the best place to grow together with the competence. start interview",
-            }
-        )
-
-        self.conversation.append(
-            {
-                "role": "assistant",
-                "content": "Thank you for providing your self-introductions.",
-            }
-        )
-
-        self.conversation.append(
-            {
-                "role": "user",
-                "content": "Now you extract the above self-introduction specifically. Ask a famous and tricky question based on the this extraction. You don't have to show me the extract, just ask me question. and re-extract and ask question when you're done with the tail-biting method. and you must say only korean. and Don't say anything other than a question from now on. give me a question.",
+                + ")"
+                + "self_introduction("
+                + resume
+                + ")"
+                + "agressive_position()",
             }
         )
 
@@ -562,7 +464,7 @@ class TendancyInterview(APIView):
         completion = openai.ChatCompletion.create(
             model="gpt-3.5-turbo", messages=self.conversation, temperature=0.9, n=1
         )
-        
+
         message = completion.choices[0].message["content"]
         return message
 
@@ -586,32 +488,26 @@ class QnAview(APIView):
     # form_id와 연결되어 있는 question 객체를 가져온다.
     # form에 질문과 답변이 여러개 들어있으므로 모두 가져온 후 보여줄 수 있어야 한다.
     def get(self, request):
-        
         form_id = request.GET.get("form_id")
         # form Object 얻기
         form_object = Form.objects.get(id=form_id)
-        
+
         # 특정 form과 연결된 Question, Answer 객체 리스트로 얻기
         question_object = Question.objects.filter(form_id=form_object)
-        
+
         QnA = []
-        for i in range(0, len(question_object)-1): # ok
-            answer_object = Answer.objects.get(question_id=question_object[i]) # ok
-            
+        for i in range(0, len(question_object) - 1):  # ok
+            answer_object = Answer.objects.get(question_id=question_object[i])  # ok
+
             # 질문, 답변 텍스트 가져오기
             question = question_object[i].content
             answer = answer_object.content
-            
-            QnA.append(
-                {
-                    'question': question,
-                    'answer': answer
-                }
-            )
-        
+
+            QnA.append({"question": question, "answer": answer})
+
         # QnA 리스트 JSON으로 변환
-        QnA = {'QnA': QnA}
-            
+        QnA = {"QnA": QnA}
+
         return JsonResponse(QnA, status=status.HTTP_200_OK)
 
 
@@ -631,37 +527,32 @@ class GPTAnswerview(APIView):
         responses={"200": ResponseVoiceSerializer},
     )
     def get(self, request):
-        
         form_id = request.GET.get("form_id")
         # form Object 얻기
         form_object = Form.objects.get(id=form_id)
-        
+
         # 특정 form과 연결된 Question 객체 리스트로 얻기
         question_object = Question.objects.filter(form_id=form_object)
-        
+
         QnA = []
-        for i in range(0, len(question_object)-1): # ok
-            
-            
+        for i in range(0, len(question_object) - 1):  # ok
             answer_object = Answer.objects.get(question_id=question_object[i])
             gptanswer_object = GPTAnswer.objects.get(question_id=question_object[i])
 
             # 질문, 답변 텍스트 가져오기
-            question_content = question_id=question_object[i].content
+            question_content = question_id = question_object[i].content
             answer_content = answer_object.content
             gpt_answer = gptanswer_object.content
-            
+
             QnA.append(
                 {
-                    'question': question_content,
-                    'answer': answer_content,
-                    'gptanswer': gpt_answer
+                    "question": question_content,
+                    "answer": answer_content,
+                    "gptanswer": gpt_answer,
                 }
             )
-        
+
         # QnA 리스트 JSON으로 변환
-        QnA = {'QnA': QnA}
-            
+        QnA = {"QnA": QnA}
+
         return JsonResponse(QnA, status=status.HTTP_200_OK)
-    
-    

@@ -99,9 +99,9 @@ DATABASES = {
         "NAME": os.environ.get("MYSQL_NAME"),
         "USER": os.environ.get("MYSQL_USER"),
         "PASSWORD": os.environ.get("MYSQL_PASSWORD"),
-        "HOST": "localhost",
+        # "HOST": "localhost",
         # docker-compose 사용 시 사용
-        # "HOST": "ainterview_db",
+        "HOST": "ainterview_db",
         "PORT": os.environ.get("MYSQL_PORT"),
     }
 }
