@@ -193,8 +193,12 @@ class DefaultInterview(APIView):
     def add_question_answer(self, question, answer):
         prompt = []
         message = f"""Improve the answers to the following interview questions with better answers.\
-            Don't explain or say anything, just produce and show better answers\ 
-            Say it in Korean
+            Look at the answers below and edit them to a better one and print them out.\
+            Don't change the content of the answer completely, but modify it to the extent that it improves.\
+            Never say anything about the questions and answers below.\
+            Don't write "Question" or "Answer"\
+            Don't write about the question below.\
+            Say it in Korean\
             Question: `{question}`\
             Answer: `{answer}`"""
         
@@ -205,7 +209,7 @@ class DefaultInterview(APIView):
 
     def continue_conversation(self, prompt):
         completion = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo", messages=prompt, temperature=0.9, n=1
+            model="gpt-3.5-turbo", messages=prompt, temperature=0.7, n=1
         )
 
         message = completion.choices[0].message["content"]
