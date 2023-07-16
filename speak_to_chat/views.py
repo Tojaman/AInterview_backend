@@ -535,18 +535,22 @@ class PersonalityInterview(APIView):
     def default_tuning(self):
         # 대화 시작 메시지 추가
         self.conversation.append(
-            {"role": "assistant", "content": "Explain the applicant."}
+            {
+                "role": "system",
+                "content": "You're a strict interviewer. You don't make any unnecessary expressions asides from giving interview questions.",
+            }
         )
         self.conversation.append(
             {
                 "role": "user",
-                "content": "Start the interview. I will apply to Naver as a front-end developer. Also, I am a new front-end applicant. Please prepare challenging and common questions for interviewers when applying for Naver Front Developer. If I answer, tell me okay and present me the next question you prepared earlier. Now ask the question.",
-            },
+                "content": 'function_name: [personality_interview] input: ["sector", "job", "career", "resume", "number_of_questions"] rule: [I want you to act as a strict interviewer, asking personality questions for the interviewee. I will provide you with input forms including "sector", "job", "career", "resume", and "number_of_questions". I have given inputs, but you do not have to refer to those. Your task is to simply make common personality questions and provide questions to me. You should create total of "number_of_questions" amount of questions, and provide it once at a time. You should ask the next question only after I have answered to the question. Do not include any explanations or additional information in your response, simply provide the generated question. You should also provide only one question at a time. Example questions would be questions such as "How do you handle stress and pressure?", "If you could change one thing about your personality, what would it be and why?". Remember, these questions are related to personality. Once all questions are done, you should just say "Alright. I will evaluate your answers." You must speak only in Korean during the interview.] personality_interview("IT", "Developer", "Fresher", "Graduated Tech University of Korea, Bachelor\'s degree of Software, has experience with Python Django REST framework.", "3")',
+            }
         )
-        # 대화 계속하기
-        message = self.continue_conversation()
 
-        return Response(message, status=status.HTTP_200_OK)
+    # 질문과 대답 추가
+    def add_question_answer(self, question, answer):
+        self.conversation.append({"role": "assistant", "content": question})
+        self.conversation.append({"role": "assistant", "content": answer})
 
     def continue_conversation(self):
         completion = openai.ChatCompletion.create(
