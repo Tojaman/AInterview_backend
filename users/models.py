@@ -31,16 +31,28 @@ class CustomUserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
+# soft-delete
+class SoftDeleteModel(models.Model):
+    is_deleted = models.BooleanField(default=False)
 
-class User(AbstractBaseUser, PermissionsMixin):
+    class Meta:
+        abstract = True
+
+    def delete(self):
+        self.is_deleted = True
+        self.save()
+
+    def restore(self):
+        self.is_deleted = False
+        self.save()
+
+# SoftDeleteModel 상속해 user soft-delete 구현
+class User(AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
     email = models.EmailField(verbose_name="email", max_length=60, unique=True)
-    username = models.CharField(max_length=30, unique=True)
+    username = models.CharField(max_length=30)
     date_joined = models.DateTimeField(verbose_name='date joined', auto_now_add=True)
     last_login = models.DateTimeField(verbose_name='last login', auto_now=True)
     is_admin = models.BooleanField(default=False)
-
-    # soft-delete 구현시 활용 예정
-    is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
 
