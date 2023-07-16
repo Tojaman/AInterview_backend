@@ -444,24 +444,28 @@ class PersonalityInterview(APIView):
         responses={"200": ResponseVoiceSerializer},
     )
     def get(self, request):
+        # form_id 받기, 파라미터로 받기
+        form_id = request.GET.get("form_id")
+        # Question 테이블에 데이터 추가, form Object 얻기
+        form_object = Form.objects.get(id=form_id)
+
         # 기본 튜닝
-        self.default_tuning()
+        self.default_tuning(
+            form_object.sector_name,
+            form_object.job_name,
+            form_object.career,
+            form_object.resume,
+        )
 
         # 대화 계속하기
         message = self.continue_conversation()
-
-        # form_id 받기, 파라미터로 받기
-        form_id = request.GET.get("form_id")
-
-        # Question 테이블에 데이터 추가, form Object 얻기
-        form_object = Form.objects.get(id=form_id)
 
         Question.objects.create(content=message, form_id=form_object)
 
         return Response(message, status=status.HTTP_200_OK)
 
-        # 음성 데이터를 받아야 하는 경우
 
+    # 음성 데이터를 받아야 하는 경우
     @swagger_auto_schema(
         operation_description="음성 데이터 POST",
         operation_id="음성 파일을 업로드 해주세요.",
@@ -500,39 +504,50 @@ class PersonalityInterview(APIView):
     def post(self, request, format=None):
         # 답변을 받고, 응답을 해주는 부분 -> 음성 파일 추출 필요
         # 오디오 파일, 지원 정보 아이디, 질문 아이디를 Request Body로 받음
+        self.conversation = []
         audio_file = request.FILES["voice_file"]
         form_id = request.data["form_id"]
         question_id = request.data["question_id"]
         transcript = openai.Audio.transcribe("whisper-1", audio_file)
         transcription = transcript["text"]
-
         # S3에 업로드하는 로직 필요!
 
         # 답변 테이블에 추가
         question_object = Question.objects.get(question_id=question_id)
         Answer.objects.create(content=transcription, question_id=question_object)
 
-        form_info = Form.objects.get(id=form_id)
-        questions = form_info.questions.all()
+        form_object = Form.objects.get(id=form_id)
+        questions = form_object.questions.all()
 
         # 기본 튜닝
-        self.default_tuning()
+        self.default_tuning(
+            form_object.sector_name,
+            form_object.job_name,
+            form_object.career,
+            form_object.resume,
+        )
 
-        print(questions)
-        # 질문, 대답 추가.
-        for question in questions:
-            answer = question.answer
-            self.add_question_answer(question.content, answer.content)
+        try:
+            # 질문, 대답 추가.
+            for question in questions:
+                answer = question.answer
+                self.add_question_answer(question.content, answer.content)
+        except:
+            error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
+            response = HttpResponse(error_message, status=500)
+            return response
 
         message = self.continue_conversation()
+        print(message)
+
 
         # 질문 테이블에 정보 추가
-        Question.objects.create(content=message, form_id=form_info)
+        Question.objects.create(content=message, form_id=form_object)
 
         return Response(message, status=status.HTTP_200_OK)
 
     # 인성 면접 기본 튜닝
-    def default_tuning(self):
+    def default_tuning(self, sector, job, career, resume):
         # 대화 시작 메시지 추가
         self.conversation.append(
             {
@@ -543,7 +558,12 @@ class PersonalityInterview(APIView):
         self.conversation.append(
             {
                 "role": "user",
-                "content": 'function_name: [personality_interview] input: ["sector", "job", "career", "resume", "number_of_questions"] rule: [I want you to act as a strict interviewer, asking personality questions for the interviewee. I will provide you with input forms including "sector", "job", "career", "resume", and "number_of_questions". I have given inputs, but you do not have to refer to those. Your task is to simply make common personality questions and provide questions to me. You should create total of "number_of_questions" amount of questions, and provide it once at a time. You should ask the next question only after I have answered to the question. Do not include any explanations or additional information in your response, simply provide the generated question. You should also provide only one question at a time. Example questions would be questions such as "How do you handle stress and pressure?", "If you could change one thing about your personality, what would it be and why?". Remember, these questions are related to personality. Once all questions are done, you should just say "Alright. I will evaluate your answers." You must speak only in Korean during the interview.] personality_interview("IT", "Developer", "Fresher", "Graduated Tech University of Korea, Bachelor\'s degree of Software, has experience with Python Django REST framework.", "3")',
+                "content": 'function_name: [personality_interview] input: ["sector", "job", "career", "resume", "number_of_questions"] rule: [I want you to act as a strict interviewer, asking personality questions for the interviewee. I will provide you with input forms including "sector", "job", "career", "resume", and "number_of_questions". I have given inputs, but you do not have to refer to those. Your task is to simply make common personality questions and provide questions to me. You should create total of "number_of_questions" amount of questions, and provide it once at a time. You should ask the next question only after I have answered to the question. Do not include any explanations or additional information in your response, simply provide the generated question. You should also provide only one question at a time. Example questions would be questions such as "How do you handle stress and pressure?", "If you could change one thing about your personality, what would it be and why?". Remember, these questions are related to personality. Once all questions are done, you should just say "Alright. I will evaluate your answers." You must speak only in Korean during the interview.] personality_interview('
+                           +str(sector) +", "
+                           +str(job) +", "
+                           +str(career) +", "
+                           +str(resume)
+                           +", 3)",
             }
         )
 
