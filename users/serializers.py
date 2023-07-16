@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model, authenticate
 # 유저 불러오기
 User = get_user_model()
 
+
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField()
@@ -18,9 +19,11 @@ class LoginSerializer(serializers.Serializer):
 
             if user is None:
                 raise serializers.ValidationError("이메일 혹은 비밀번호가 틀렸습니다.")
-            # soft-delete된 사용자일 시 발생시키는 부분. 아직 해당 기능구현 없음.
-            if not user.is_active:
-                raise serializers.ValidationError("삭제된 계정입니다. ")
+
+            # soft-delete
+            if user.is_deleted:
+                raise serializers.ValidationError("삭제된 계정입니다.")
+
         else:
             raise serializers.ValidationError('이메일과 비밀번호를 입력하세요.')
 
@@ -57,6 +60,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.save()
         return user
 
+# LogoutView에서 post method swagger test시 request_body로 활용
+class RefreshTokenSerializer(serializers.Serializer):
+    refresh = serializers.CharField(help_text='Refresh token')
 
 # uncomment below code block in case we have to return user information in LoginView
 # class UserSerializer(serializers.ModelSerializer):
@@ -71,3 +77,4 @@ class RegisterSerializer(serializers.ModelSerializer):
 #         user.set_password(password)
 #         user.save()
 #         return user
+
