@@ -101,7 +101,7 @@ DATABASES = {
         "PASSWORD": os.environ.get("MYSQL_PASSWORD"),
         # "HOST": "localhost",
         # docker-compose 사용 시 사용
-        "HOST": "ainterview_db",
+        "HOST": "127.0.0.1",
         "PORT": os.environ.get("MYSQL_PORT"),
     }
 }

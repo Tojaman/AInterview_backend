@@ -117,12 +117,13 @@ class DefaultInterview(APIView):
         form_id = request.data["form_id"]
         question_id = request.data["question_id"]
         # 음성 -> 텍스트
-        transcript = openai.Audio.translate("whisper-1", audio_file)
+        transcript = openai.Audio.transcribe("whisper-1", audio_file)
         transcription = transcript["text"]
 
         # 답변 테이블에 추가
         question_object = Question.objects.get(question_id=question_id)
         Answer.objects.create(content=transcription, question_id=question_object)
+        answer_object = Answer.objects.get(question_id=question_id)
 
         # id=form_id인 Form 객체 가져오기(get)
         form_info = Form.objects.get(id=form_id)
@@ -141,9 +142,10 @@ class DefaultInterview(APIView):
         # =========================gpt_answer===============================      
         # 질문, 답변 텍스트 가져오기
         question = question_object.content
+        answer = answer_object.content
         
         # gpt 모범 답변 튜닝 및 생성
-        gpt_answer = self.add_gptanswer(question, transcription)
+        gpt_answer = self.add_gptanswer(question, answer)
         
         # gpt 모범 답변 객체 생성
         gpt_object = GPTAnswer.objects.create(question_id=question_object, content=gpt_answer)
@@ -157,7 +159,7 @@ class DefaultInterview(APIView):
         
         QnA = {
             "QnA": {
-                "Answer": transcription,
+                "Answer": answer,
                 "GPT_Answer": gpt_answer,
                 "다음 질문": message
             }
@@ -179,7 +181,7 @@ class DefaultInterview(APIView):
             {
                 "role": "user",
                 "content": 'function_name: [basic_interview] input: ["number_of_questions"] rule: [I want you to act as a interviewer, asking basic questions for the interviewee.\
-                        Ask me the number of "number_of_questions" and say "finish.\
+                        Ask me the number of "number_of_questions".\
                         Your task is to simply make common basic questions and provide questions to me.\
                         Do not ask me questions about jobs.\
                         Do not ask the same question or similar question more than once\
@@ -191,20 +193,12 @@ class DefaultInterview(APIView):
                         Do not ask questions related to my answer, ask me a separate basic question like the example below\
                         Example questions would be questions such as "What motivated you to apply for our company?", "Talk about your strengths and weaknesses."\
                         Keep in mind that these are the basic questions that you ask in an interview regardless of your occupation\
-                        Once all questions are done, you should just say "Finished." You must speak only in Korean during the interview.] personality_interview("5")'
+                        Let me know this is the last question.\
+                        You must speak only in Korean during the interview.] personality_interview("5")'
             }
         )
     
     # gpt 모범 답변 튜닝 및 생성
-    # function을 사용하면
-    # 1. 모범 답변에 질문을 포함해서 대답함
-    # 2. 프로젝트, 맡은 업무 등 딥한 질문을 하고 꼬꼬무 질문을 함(질문이랑은 상관이 없는데 왜그런진 모르겠음)
-    # 3. 갑자기 질문을 멈추고 "ok 너를 평가해줄꼐"라고 대답햄
-    # 반면 content, rolr을 사용하면
-    # 1. 조건에 잘 맞춰서 질문해줌(이것도 질문이상 상관 없는데 왜 그런지 모르겠음)
-    # gpt 답변을 function -> role,content로 바꾸면 이상하게 질문 퀄리티가 좋아짐.. 뭐지??
-    # ============ 또 다른 문제 발생 ======================
-    # 예시로 준 질문만 하고 다 하면 "이것으로 모든 질문이 끝났습니다. 귀하의 답변을 평가하겠습니다."라고 하고 질문을 안함
     def add_gptanswer(self, question, answer):
         prompt = []
         message = f"""Improve the answers to the following interview questions with better answers.\
@@ -218,19 +212,23 @@ class DefaultInterview(APIView):
             Question: `{question}`\
             Answer: `{answer}`"""
         
-        # message = f'''Look at the answers below and edit them to a better one.\
+        # message = '''Improve the answers to the following interview questions with better answers.\
+        #     I will provide you with input forms including "question", "answer".\
+        #     Look at the questions and answers below and make a better answer by correcting or adding any deficiencies in the answers\
         #     Don't change the content of the answer completely, but modify it to the extent that it improves.\
         #     Never say anything about the questions and answers below.\
-        #     Don't write "Question" or "Answer"\
         #     Don't write about the question below.\
-        #     Say it in Korean
-        #     Question: {question}\
-        #     Answer: {answer}'''
+        #     Say it in Korean'''
         
         # prompt.append(
         #     {
         #         "role": "user",
-        #         "content": f'''function_name: [gpt_answer] input: ["question", "answer", "number_of_questions"] rule: [{message}] gpt_answer({question}, {answer}, "1")'''
+        #         "content": 'function_name: [gpt_answer] input: ["question", "answer", "number_of_questions"] rule: [Improve the answers to the following interview questions with better answers. I will provide you with input forms including "question", "answer". Look at the questions and answers below and make a better answer by correcting or adding any deficiencies in the answers. Do not change the content of the answer completely, but modify it to the extent that it improves. Never say anything about the questions and answers below. Do not write about the question below. Say it in Korean"]'
+        #         + "gpt_answer(question="
+        #         + question
+        #         + ", answer="
+        #         + answer
+        #         + ")"
         #     }
         # )
         prompt.append(
@@ -241,7 +239,7 @@ class DefaultInterview(APIView):
         )
         
         completion = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo", messages=prompt, temperature=0.7, n=1, max_tokens=2900
+            model="gpt-3.5-turbo", messages=prompt, temperature=0.7, n=1
         )
 
         message = completion.choices[0].message["content"]
