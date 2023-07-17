@@ -132,10 +132,15 @@ class DefaultInterview(APIView):
         # 기본 튜닝
         self.default_tuning()
         
-        # 질문, 대답 추가.
-        for question in questions:
-            answer = question.answer
-            self.add_question_answer(question.content, answer.content)
+        try:
+            # 질문, 대답 추가.
+            for question in questions:
+                answer = question.answer
+                self.add_question_answer(question.content, answer.content)
+        except:
+            error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
+            response = HttpResponse(error_message, status=500)
+            return response
             
         
         
@@ -368,6 +373,18 @@ class SituationInterview(APIView):
             error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
             response = HttpResponse(error_message, status=500)
             return response
+        
+        # =========================gpt_answer===============================      
+        # 질문, 답변 텍스트 가져오기
+        question = question_object.content
+        answer = answer_object.content
+        
+        # gpt 모범 답변 튜닝 및 생성
+        gpt_answer = self.add_gptanswer(question, answer)
+        
+        # gpt 모범 답변 객체 생성
+        gpt_object = GPTAnswer.objects.create(question_id=question_object, content=gpt_answer)
+        # =========================gpt_answer===============================
 
         message = self.continue_conversation()
 
@@ -405,6 +422,34 @@ class SituationInterview(APIView):
                 + ")"
             }
         )
+        
+    # gpt 모범 답변 튜닝 및 생성
+    def add_gptanswer(self, question, answer):
+        prompt = []
+        message = f"""Improve the answers to the following interview questions with better answers.\
+            I will provide you with input forms including "question", "answer".\
+            Look at the questions and answers below and make a better answer by correcting or adding any deficiencies in the answers\
+            Don't change the content of the answer completely, but modify it to the extent that it improves.\
+            Never say anything about the questions and answers below.\
+            Don't write "Question" or "Answer"\
+            Don't write about the question below.\
+            Say it in Korean
+            Question: `{question}`\
+            Answer: `{answer}`"""
+        
+        prompt.append(
+            {
+                "role": "user",
+                "content": message
+            }
+        )
+        
+        completion = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo", messages=prompt, temperature=0.7, n=1
+        )
+
+        message = completion.choices[0].message["content"]
+        return message
 
 
 # 심층 면접 인터뷰
@@ -519,6 +564,18 @@ class DeepInterview(APIView):
             error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
             response = HttpResponse(error_message, status=500)
             return response
+        
+        # =========================gpt_answer===============================      
+        # 질문, 답변 텍스트 가져오기
+        question = question_object.content
+        answer = answer_object.content
+        
+        # gpt 모범 답변 튜닝 및 생성
+        gpt_answer = self.add_gptanswer(question, answer)
+        
+        # gpt 모범 답변 객체 생성
+        gpt_object = GPTAnswer.objects.create(question_id=question_object, content=gpt_answer)
+        # =========================gpt_answer===============================
 
         message = self.continue_conversation()
 
@@ -560,6 +617,34 @@ class DeepInterview(APIView):
                 + "agressive_position()",
             }
         )
+    
+    # gpt 모범 답변 튜닝 및 생성
+    def add_gptanswer(self, question, answer):
+        prompt = []
+        message = f"""Improve the answers to the following interview questions with better answers.\
+            I will provide you with input forms including "question", "answer".\
+            Look at the questions and answers below and make a better answer by correcting or adding any deficiencies in the answers\
+            Don't change the content of the answer completely, but modify it to the extent that it improves.\
+            Never say anything about the questions and answers below.\
+            Don't write "Question" or "Answer"\
+            Don't write about the question below.\
+            Say it in Korean
+            Question: `{question}`\
+            Answer: `{answer}`"""
+        
+        prompt.append(
+            {
+                "role": "user",
+                "content": message
+            }
+        )
+        
+        completion = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo", messages=prompt, temperature=0.7, n=1
+        )
+
+        message = completion.choices[0].message["content"]
+        return message
 
 
 # 성향(인성) 면접 인터뷰
@@ -661,6 +746,18 @@ class PersonalityInterview(APIView):
         for question in questions:
             answer = question.answer
             self.add_question_answer(question.content, answer.content)
+            
+        # =========================gpt_answer===============================      
+        # 질문, 답변 텍스트 가져오기
+        question = question_object.content
+        answer = answer_object.content
+        
+        # gpt 모범 답변 튜닝 및 생성
+        gpt_answer = self.add_gptanswer(question, answer)
+        
+        # gpt 모범 답변 객체 생성
+        gpt_object = GPTAnswer.objects.create(question_id=question_object, content=gpt_answer)
+        # =========================gpt_answer===============================
 
         message = self.continue_conversation()
 
@@ -693,6 +790,34 @@ class PersonalityInterview(APIView):
     def continue_conversation(self):
         completion = openai.ChatCompletion.create(
             model="gpt-3.5-turbo", messages=self.conversation, temperature=0.9, n=1
+        )
+
+        message = completion.choices[0].message["content"]
+        return message
+    
+    # gpt 모범 답변 튜닝 및 생성
+    def add_gptanswer(self, question, answer):
+        prompt = []
+        message = f"""Improve the answers to the following interview questions with better answers.\
+            I will provide you with input forms including "question", "answer".\
+            Look at the questions and answers below and make a better answer by correcting or adding any deficiencies in the answers\
+            Don't change the content of the answer completely, but modify it to the extent that it improves.\
+            Never say anything about the questions and answers below.\
+            Don't write "Question" or "Answer"\
+            Don't write about the question below.\
+            Say it in Korean
+            Question: `{question}`\
+            Answer: `{answer}`"""
+        
+        prompt.append(
+            {
+                "role": "user",
+                "content": message
+            }
+        )
+        
+        completion = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo", messages=prompt, temperature=0.7, n=1
         )
 
         message = completion.choices[0].message["content"]
