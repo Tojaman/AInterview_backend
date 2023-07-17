@@ -15,19 +15,17 @@ class LoginSerializer(serializers.Serializer):
         password = data.get("password", "")
 
         if email and password:
-            print(self.context.get("request"))
-
-            user = authenticate(
-                request=self.context.get("request"), email=email, password=password
-            )
+            user = authenticate(request=self.context.get('request'), username=email, password=password)
 
             if user is None:
                 raise serializers.ValidationError("이메일 혹은 비밀번호가 틀렸습니다.")
-            # soft-delete된 사용자일 시 발생시키는 부분. 아직 해당 기능구현 없음.
-            if not user.is_active:
-                raise serializers.ValidationError("삭제된 계정입니다. ")
+
+            # soft-delete
+            if user.is_deleted:
+                raise serializers.ValidationError("삭제된 계정입니다.")
+
         else:
-            raise serializers.ValidationError("이메일과 비밀번호를 입력하세요.")
+            raise serializers.ValidationError('이메일과 비밀번호를 입력하세요.')
 
         data["user"] = user
         return data
@@ -40,7 +38,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("username", "email", "password", "password2")
+        fields = ('username', 'email', 'password', 'password2')
 
     def validate_email(self, value):
         # Check if the email is already in use
@@ -50,23 +48,21 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def save(self, **kwargs):
         user = User(
-            username=self.validated_data["username"],
-            email=self.validated_data["email"],
+            username=self.validated_data['username'],
+            email=self.validated_data['email'],
         )
-        password = self.validated_data["password"]
-        password2 = self.validated_data["password2"]
+        password = self.validated_data['password']
+        password2 = self.validated_data['password2']
 
         if password != password2:
-            raise serializers.ValidationError({"password": "비밀번호가 일치하지 않습니다."})
+            raise serializers.ValidationError({'password': '비밀번호가 일치하지 않습니다.'})
         user.set_password(password)
         user.save()
         return user
 
-
 # LogoutView에서 post method swagger test시 request_body로 활용
 class RefreshTokenSerializer(serializers.Serializer):
-    refresh = serializers.CharField(help_text="Refresh token")
-
+    refresh = serializers.CharField(help_text='Refresh token')
 
 # uncomment below code block in case we have to return user information in LoginView
 # class UserSerializer(serializers.ModelSerializer):
@@ -81,3 +77,4 @@ class RefreshTokenSerializer(serializers.Serializer):
 #         user.set_password(password)
 #         user.save()
 #         return user
+
