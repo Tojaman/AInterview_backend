@@ -1,6 +1,6 @@
 from channels.generic.websocket import WebsocketConsumer
 import openai
-from .models import Form
+from .models import Form, Answer
 from dotenv import load_dotenv
 import os
 import json
@@ -38,7 +38,6 @@ class SituationInterviewConsumer(WebsocketConsumer):
                 form_object.sector_name,
                 form_object.job_name,
                 form_object.career,
-                form_object.resume,
             )
 
             # 대화 계속하기
@@ -63,7 +62,32 @@ class SituationInterviewConsumer(WebsocketConsumer):
                 transcript = openai.Audio.transcribe("whisper-1", audio_file)
 
             transcription = transcript["text"]
+
+            # Question 테이블의 마지막 Row 가져오기
+            last_low = Question.objects.latest("question_id")
+
+            # 답변 테이블에 추가
+            Answer.objects.create(content=transcription, question_id=last_low)
             print(transcription)
+
+            # formId를 통해서 question 테이블을 가져옴
+            form_object = Form.objects.get(id=data["formId"])
+            questions = form_object.questions.all()
+
+            self.default_tuning(
+                form_object.sector_name,
+                form_object.job_name,
+                form_object.career,
+            )
+
+            # question 테이블에서 질문과 답변에 대해 튜닝 과정에 추가함.
+            try:
+                for question in questions:
+                    answer = question.answer
+                    self.add_question_answer(question.content, answer.content)
+            except:
+                error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
+                print(error_message)
 
             self.continue_conversation(form_object)
 
@@ -92,23 +116,20 @@ class SituationInterviewConsumer(WebsocketConsumer):
 
         Question.objects.create(content=messages, form_id=form_object)
 
+
     # 기본 튜닝
-    def default_tuning(self, selector_name, job_name, career, resume):
+    def default_tuning(self, seletor_name, job_name, career):
         # 대화 시작 메시지 추가
-        self.conversation = [
+        self.conversation.append(
             {
                 "role": "user",
-                "content": 'function_name: [interviewee_info] input: ["Company", "Job", "Career"] rule: [Please act as a skillful interviewer. We will provide the input form including "Company," "Professional," and "Career." Look at the sentences "Company," "Job," and "Career" to get information about me as an interviewee. For example, let\'s say company = IT company, job = web front-end developer, experience = newcomer. Then you can recognize that you\'re a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information. You must speak only in Korean during the interview. and you don\'t have to answer.] function_name: [aggresive_position] rule: [Ask me questions in a tail-to-tail manner about what I answer. There may be technical questions about the answer, and there may be questions that you, as an interviewer, would dig into the answer.. For example, if the question asks, "What\'s your web framework?" the answer is, "React." So the new question is, "What do you use as a health management tool in React, and why do you need this?" It should be the same question. If you don\'t have any more questions, move on to the next topic.] function_name: [self_introduction] input : ["self-introduction"] rule: [We will provide an input form including a "self-introduction." Read this "self-introduction" and extract the content to generate a question. just ask one question.]'
-                + 'interviewee_info(Company="'
-                + selector_name
-                + '", Job="'
+                "contenet": 'function_name: [situation_interview] input: ["sector", "job", "career"] rule: [You are an expert in recruitment and interviewer specializing in finding the best talent. Ask questions that can judge my ability to cope with situations based “job” that I’ll provide and ask once at a time. For example, you would be ask such as "You have been assigned to work on a project where the design team has provided you with a visually appealing but intricate UI design for a web page. As you start implementing it, you realize that some of the design elements may not be feasible to achieve with the current technology or may negatively impact the performance. How would you handle this situation?" You should ask the next question only after I have answered to the question. Never ask a question similar to the previous one include example that i provide. Do not include any explanations or additional information in your response, simply provide a question in korean. Do not say anything other than a question.]'
+                + "situation_interview(Company="
+                + seletor_name
+                + ", Job="
                 + job_name
-                + '", Career="'
+                + ", Career="
                 + career
-                + '")'
-                + 'self_introduction("'
-                + resume
-                + '")'
-                + "aggressive_position()",
+                + ")"
             }
-        ]
+        )
