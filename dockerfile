@@ -10,6 +10,8 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 RUN pip install python-dotenv
 
+
+
 # 소스 코드 복사
 COPY . .
 
