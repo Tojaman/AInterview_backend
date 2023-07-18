@@ -1,5 +1,8 @@
 from channels.generic.websocket import WebsocketConsumer
 import openai
+
+from ainterview.settings import FILE_URL
+from storage import upload_mp3
 from .models import Form, Answer
 from dotenv import load_dotenv
 import os
@@ -50,6 +53,13 @@ class SituationInterviewConsumer(WebsocketConsumer):
             # 오디오 파일로 변환
             audio_file = ContentFile(audio_data)
 
+            # s3업로드시 파일 경로 설정
+            file_name = audio_file.name
+            file_path = f'{FILE_URL}{file_name}'
+
+            # 파일 업로드 및 URL 받아오기
+            file_url = upload_mp3(audio_file, file_path)
+
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
             temp_file_path = temp_file.name
 
@@ -67,7 +77,7 @@ class SituationInterviewConsumer(WebsocketConsumer):
             last_low = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
-            Answer.objects.create(content=transcription, question_id=last_low)
+            Answer.objects.create(content=transcription, question_id=last_low, recode_file=file_url)
             print(transcription)
 
             # formId를 통해서 question 테이블을 가져옴
