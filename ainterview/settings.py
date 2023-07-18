@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 import os
 from dotenv import load_dotenv
+# from python_dotenv import load_dotenv
 from datetime import timedelta
 from pathlib import Path
 
@@ -36,7 +37,6 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -52,10 +52,10 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "drf_yasg",
-    "forms",
-    "users",
     "django_celery_beat",
     "django_celery_results",
+    "forms",
+    "users",
     "speak_to_chat",
 ]
 
@@ -93,20 +93,26 @@ WSGI_APPLICATION = "ainterview.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.mysql",
+#         # "ENGINE": "mysql.connector.django",
+#         "NAME": os.environ.get("MYSQL_NAME"),
+#         "USER": "root",
+#         "PASSWORD": os.environ.get("MYSQL_ROOT_PASSWORD"),
+#         #"HOST": "localhost",
+#         # docker-compose 사용 시 사용
+#         "HOST": "127.0.0.1", # host에는 컨테이너 이름이 아닌 이미지 이름을 적어야 함(출처:gpt)
+#         "PORT": os.environ.get("MYSQL_PORT"),
+#     }
+# }
+
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.mysql",
-        # "ENGINE": "mysql.connector.django",
-        "NAME": os.environ.get("MYSQL_NAME"),
-        "USER": os.environ.get("MYSQL_USER"),
-        "PASSWORD": os.environ.get("MYSQL_PASSWORD"),
-        # "HOST": "localhost",
-        # docker-compose 사용 시 사용
-        "HOST": "127.0.0.1",
-        "PORT": os.environ.get("MYSQL_PORT"),
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -189,6 +195,8 @@ CELERY_RESULT_BACKEND = "django-db"  # Celery 작업 결과를 Django DB에 저�
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
+
+
 
 
 # 멀티 파트를 처리할 수 있도록 함.
