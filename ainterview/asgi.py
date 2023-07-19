@@ -10,7 +10,21 @@ https://docs.djangoproject.com/en/4.2/howto/deployment/asgi/
 import os
 
 from django.core.asgi import get_asgi_application
+from channels.routing import ProtocolTypeRouter, URLRouter
+from django.core.asgi import get_asgi_application
+from speak_to_chat.deep_interview_consumer import DeepInterviewConsumer
+from channels.auth import AuthMiddlewareStack
+from django.urls import re_path
+import speak_to_chat.routing
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ainterview.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ainterview.settings")
+django_asgi_app = get_asgi_application()
 
-application = get_asgi_application()
+application = ProtocolTypeRouter(
+    {
+        "http": get_asgi_application(),
+        "websocket": AuthMiddlewareStack(
+            URLRouter(speak_to_chat.routing.websocket_urlpatterns)
+        ),
+    }
+)
