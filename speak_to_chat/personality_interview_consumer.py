@@ -14,7 +14,7 @@ load_dotenv()
 openai.api_key = os.getenv("GPT_API_KEY")
 
 
-class DeepInterviewConsumer(WebsocketConsumer):
+class PersonalityInterviewConsumer(WebsocketConsumer):
     def connect(self):
         self.accept()
         # 대화 기록을 저장할 리스트
@@ -112,15 +112,15 @@ class DeepInterviewConsumer(WebsocketConsumer):
             temperature=0.7,
             stream=True,
         ):
+            finish_reason = chunk.choices[0].finish_reason
             if chunk.choices[0].finish_reason == "stop":
+                self.send(json.dumps({"message": "", "finish_reason": finish_reason}))
                 break
 
             message = chunk.choices[0].delta["content"]
-
             messages += message
-
             # 메시지를 클라이언트로 바로 전송
-            self.send(json.dumps({"message": message}))
+            self.send(json.dumps({"message": message, "finish_reason": finish_reason}))
 
         Question.objects.create(content=messages, form_id=form_object)
 
@@ -131,10 +131,13 @@ class DeepInterviewConsumer(WebsocketConsumer):
             {
                 "role": "user",
                 "content": 'function_name: [personality_interview] input: ["sector", "job", "career", "resume", "number_of_questions"] rule: [I want you to act as a strict interviewer, asking personality questions for the interviewee. I will provide you with input forms including "sector", "job", "career", "resume", and "number_of_questions". I have given inputs, but you do not have to refer to those. Your task is to simply make common personality questions and provide questions to me. You should create total of "number_of_questions" amount of questions, and provide it once at a time. You should ask the next question only after I have answered to the question. Do not include any explanations or additional information in your response, simply provide the generated question. You should also provide only one question at a time. Example questions would be questions such as "How do you handle stress and pressure?", "If you could change one thing about your personality, what would it be and why?". Remember, these questions are related to personality. Once all questions are done, you should just say "Alright. I will evaluate your answers." You must speak only in Korean during the interview.] personality_interview('
-                           +str(selector_name) +", "
-                           +str(job_name) +", "
-                           +str(career) +", "
-                           +str(resume)
-                           +", 3)",
+                + str(selector_name)
+                + ", "
+                + str(job_name)
+                + ", "
+                + str(career)
+                + ", "
+                + str(resume)
+                + ", 3)",
             }
         ]
