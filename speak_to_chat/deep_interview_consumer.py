@@ -112,15 +112,15 @@ class DeepInterviewConsumer(WebsocketConsumer):
             temperature=0.7,
             stream=True,
         ):
+            finish_reason = chunk.choices[0].finish_reason
             if chunk.choices[0].finish_reason == "stop":
+                self.send(json.dumps({"message": "", "finish_reason": finish_reason}))
                 break
 
             message = chunk.choices[0].delta["content"]
-
             messages += message
-
             # 메시지를 클라이언트로 바로 전송
-            self.send(json.dumps({"message": message}))
+            self.send(json.dumps({"message": message, "finish_reason": finish_reason}))
 
         Question.objects.create(content=messages, form_id=form_object)
 
