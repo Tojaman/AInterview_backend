@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # "storages"
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
@@ -208,3 +209,21 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.FormParser",
     ],
 }
+
+###AWS###
+# AWS 액세스 키 설정
+AWS_ACCESS_KEY_ID = "MY_AWS_ACCESS_KEY"
+AWS_SECRET_ACCESS_KEY = "MY_AWS_SECRET_ACCESS_KEY"
+
+# S3 버킷 및 파일 저장 경로 설정
+AWS_STORAGE_BUCKET_NAME = "ainterview-bucket"
+# S3 파일 URL 설정
+AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+AWS_S3_OBJECT_PARAMETERS = {
+    "CacheControl": "max-age=86400",
+}
+
+FILE_URL = "https://" + AWS_S3_CUSTOM_DOMAIN + "/test1/"
+
+# 기본 스토리지를 S3 스토리지로 설정
+DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
