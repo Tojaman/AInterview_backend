@@ -45,7 +45,7 @@ class SituationInterviewConsumer(WebsocketConsumer):
 
             # 대화 계속하기
             self.continue_conversation(form_object)
-        else:
+        elif data["type"] == "withAudio":
             # base64 디코딩
             audio_blob = data["audioBlob"]
             audio_data = base64.b64decode(audio_blob)
@@ -108,6 +108,32 @@ class SituationInterviewConsumer(WebsocketConsumer):
 
             # 임시 파일 삭제
             os.unlink(temp_file_path)
+        else:
+            # base64 디코딩
+            audio_blob = data["audioBlob"]
+            audio_data = base64.b64decode(audio_blob)
+
+            # 오디오 파일로 변환
+            audio_file = ContentFile(audio_data)
+
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+            temp_file_path = temp_file.name
+
+            with open(temp_file_path, "wb") as file:
+                for chunk in audio_file.chunks():
+                    file.write(chunk)
+
+            # 텍스트 파일로 변환
+            with open(temp_file_path, "rb") as audio_file:
+                transcript = openai.Audio.transcribe("whisper-1", audio_file)
+
+            transcription = transcript["text"]
+
+            # Question 테이블의 마지막 Row 가져오기
+            last_low = Question.objects.latest("question_id")
+
+            # 답변 테이블에 추가
+            Answer.objects.create(content=transcription, question_id=last_low)
 
     def continue_conversation(self, form_object):
         messages = ""
