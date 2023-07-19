@@ -67,6 +67,7 @@ class DefaultInterviewConsumer(WebsocketConsumer):
 
             # 답변 테이블에 추가
             Answer.objects.create(content=transcription, question_id=last_low)
+            answer_object = Answer.objects.latest("answer_id")
             print(transcription)
 
             # formId를 통해서 question 테이블을 가져옴
@@ -86,7 +87,7 @@ class DefaultInterviewConsumer(WebsocketConsumer):
                 
             # =========================gpt_answer===============================      
             # 질문, 답변 텍스트 가져오기
-            question = question_object.content
+            question = last_low.content
             answer = answer_object.content
             
             # gpt 모범 답변 튜닝 및 생성
