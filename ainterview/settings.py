@@ -127,10 +127,16 @@ DATABASES = {
         "PASSWORD": os.environ.get("MYSQL_PASSWORD"),
         # "HOST": "localhost",
         # docker-compose 사용 시 사용
-        "HOST": "ainterview_db",
+        "HOST": "mysql-container",
         "PORT": os.environ.get("MYSQL_PORT"),
     }
 }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',  # 사용할 데이터베이스 엔진
+#         'NAME': BASE_DIR / 'db.sqlite3',         # 데이터베이스 파일의 경로
+#     }
+# }
 CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 
 # Password validation

@@ -1,31 +1,15 @@
 version: "3"
 services:
 
-  mysql:
-    image: mysql
-    env_file:
-      - ./.env
-    command: --lower_case_table_names=1
-    container_name: ainterview_db # 컨테이너 이름 설정
-    ports:
-      - "3306:3306"
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_NAME}
-      - MYSQL_USER=${MYSQL_USER} # db가 생성될 때 유저도 같이 생성
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-    # 가상 네트워크 연결
-    networks:
-      - ai_net
-
   backend:
     env_file:
       - ./.env
+    image: backend
     build:
       # context : 현재 폴더에 있는 도커파일을 쓰겠다.
       context: .
       dockerfile: dockerfile
-    container_name: backend
+    container_name: backend_service
     volumes:
       - .:/app
     # command : 컨테이너가 띄워질 때 실행하는 명령어 / 서버실행
@@ -36,8 +20,39 @@ services:
     # 가상 네트워크 연결
     networks:
       - ai_net
+
+  rabbitmq:
+    image: rabbitmq:3.7-management
+    container_name: rabbitmq_service
+    ports:
+      # Expose the port for the worker to add/get tasks
+      - 5672:5672
+      # OPTIONAL: Expose the GUI port
+      - 15672:15672
+    expose:
+      - 5672
+    environment:
+      - CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672//
     depends_on:
-      - mysql
+      - backend
+    networks:
+      - ai_net
+
+  celery:
+    container_name: celery_service
+    build:
+      context: .
+      dockerfile: dockerfile
+    environment:
+      - CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672//
+    # command: sh -c "celery -A ainterview worker -l info --pool=solo"
+    command: sh -c "celery -A ainterview worker -l info"
+    
+    networks:
+      - ai_net
+    depends_on:
+      - rabbitmq
+      - backend
 
 networks:
   ai_net:
