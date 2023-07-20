@@ -12,9 +12,11 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 import os
 from dotenv import load_dotenv
+
 # from python_dotenv import load_dotenv
 from datetime import timedelta
 from pathlib import Path
+import pymysql
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -38,7 +40,6 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 DEBUG = True
 
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -49,7 +50,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    # "storages"
+    "storages",
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
@@ -104,38 +105,22 @@ WSGI_APPLICATION = "ainterview.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.mysql",
-#         # "ENGINE": "mysql.connector.django",
-#         "NAME": os.environ.get("MYSQL_NAME"),
-#         "USER": "root",
-#         "PASSWORD": os.environ.get("MYSQL_ROOT_PASSWORD"),
-#         #"HOST": "localhost",
-#         # docker-compose 사용 시 사용
-#         "HOST": "127.0.0.1", # host에는 컨테이너 이름이 아닌 이미지 이름을 적어야 함(출처:gpt)
-#         "PORT": os.environ.get("MYSQL_PORT"),
-#     }
-# }
+# mac
+# pymysql.install_as_MySQLdb()
 
 DATABASES = {
     "default": {
-        #"ENGINE": "django.db.backends.mysql",
-        "ENGINE": "mysql.connector.django",
+        "ENGINE": "django.db.backends.mysql",
         "NAME": os.environ.get("MYSQL_NAME"),
         "USER": os.environ.get("MYSQL_USER"),
-        "PASSWORD": os.environ.get("MYSQL_ROOT_PASSWORD"),
-        "HOST": os.environ.get("MYSQL_HOST"),
-        "PORT": os.environ.get("MYSQL_PORT"),
+        "PASSWORD": os.environ.get("MYSQL_PASSWORD"),
+        "HOST": os.environ.get("HOST"),
+        "PORT": os.environ.get("PORT")
     }
 }
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',  # 사용할 데이터베이스 엔진
-#         'NAME': BASE_DIR / 'db.sqlite3',         # 데이터베이스 파일의 경로
-#     }
-# }
+
 CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -220,20 +205,19 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 
 
+###AWS#### AWS 액세스 키 설정
+AWS_ACCESS_KEY_ID = os.environ.get("MY_AWS_ACCESS_KEY")
+AWS_SECRET_ACCESS_KEY = os.environ.get("MY_AWS_SECRET_ACCESS_KEY")
 
+# S3 버킷 및 파일 저장 경로 설정
+AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
+# S3 파일 URL 설정
+AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+AWS_S3_OBJECT_PARAMETERS = {
+    "CacheControl": "max-age=86400",
+}
 
-# # 멀티 파트를 처리할 수 있도록 함.
-# REST_FRAMEWORK = {
-#     "DEFAULT_PARSER_CLASSES": [
-#         "rest_framework.parsers.MultiPartParser",
-#         "rest_framework.parsers.FormParser",
-#     ],
-# }
-
-# ###AWS###
-# # AWS 액세스 키 설정
-# AWS_ACCESS_KEY_ID = "MY_AWS_ACCESS_KEY"
-# AWS_SECRET_ACCESS_KEY = "MY_AWS_SECRET_ACCESS_KEY"
+FILE_URL = "https://" + AWS_S3_CUSTOM_DOMAIN
 
 # # S3 버킷 및 파일 저장 경로 설정
 # AWS_STORAGE_BUCKET_NAME = "ainterview-bucket"

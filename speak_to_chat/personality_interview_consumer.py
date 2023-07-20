@@ -1,6 +1,9 @@
+import uuid
 
 from channels.generic.websocket import WebsocketConsumer
 import openai
+
+from storage import get_file_url
 from .models import Form
 from dotenv import load_dotenv
 import os
@@ -52,6 +55,9 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
             # 오디오 파일로 변환
             audio_file = ContentFile(audio_data)
 
+            # 파일 업로드 및 URL 받아오기
+            file_url = get_file_url(audio_file, uuid)
+
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
             temp_file_path = temp_file.name
 
@@ -69,7 +75,9 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
             last_low = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
-            Answer.objects.create(content=transcription, question_id=last_low)
+            Answer.objects.create(
+                content=transcription, question_id=last_low, record_file=file_url
+            )
             print(transcription)
 
             # formId를 통해서 question 테이블을 가져옴
@@ -107,6 +115,9 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
             # 오디오 파일로 변환
             audio_file = ContentFile(audio_data)
 
+            # 파일 업로드 및 URL 받아오기
+            file_url = get_file_url(audio_file, uuid)
+
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
             temp_file_path = temp_file.name
 
@@ -124,7 +135,9 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
             last_low = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
-            Answer.objects.create(content=transcription, question_id=last_low)
+            Answer.objects.create(
+                content=transcription, question_id=last_low, recode_file=file_url
+            )
 
     # 질문과 대답 추가
     def add_question_answer(self, question, answer):
@@ -158,7 +171,7 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
         self.conversation = [
             {
                 "role": "user",
-                "content": 'function_name: [personality_interview] input: ["sector", "job", "career", "resume", "number_of_questions"] rule: [I want you to act as a strict interviewer, asking personality questions for the interviewee. I will provide you with input forms including "sector", "job", "career", "resume", and "number_of_questions". I have given inputs, but you do not have to refer to those. Your task is to simply make common personality questions and provide questions to me. You should create total of "number_of_questions" amount of questions, and provide it once at a time. You should ask the next question only after I have answered to the question. Do not include any explanations or additional information in your response, simply provide the generated question. You should also provide only one question at a time. Example questions would be questions such as "How do you handle stress and pressure?", "If you could change one thing about your personality, what would it be and why?". Remember, these questions are related to personality. Once all questions are done, you should just say "Alright. I will evaluate your answers." You must speak only in Korean during the interview.] personality_interview('
+                "content": 'function_name: [personality_interview] input: ["sector", "job", "career", "resume", "number_of_questions"] rule: [I want you to act as a strict interviewer, asking personality questions for the interviewee. I will provide you with input forms including "sector", "job", "career", "resume", and "number_of_questions". I have given inputs, but you do not have to refer to those. Your task is to simply make common personality questions and provide questions to me. You should create total of "number_of_questions" amount of questions, and provide it once at a time. You should ask the next question only after I have answered to the question. Do not include any explanations or additional information in your response, simply provide the generated question. You should also provide only one question at a time. Example questions would be questions such as "How do you handle stress and pressure?", "If you could change one thing about your personality, what would it be and why?". Remember, these questions are related to personality. Once all questions are done, you should just say "수고하셨습니다." You must speak only in Korean during the interview.] personality_interview('
                 + str(selector_name)
                 + ", "
                 + str(job_name)
