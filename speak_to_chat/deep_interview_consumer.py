@@ -43,7 +43,7 @@ class DeepInterviewConsumer(WebsocketConsumer):
 
             # 대화 계속하기
             self.continue_conversation(form_object)
-        else:
+        elif data["type"] == "withAudio":
             # base64 디코딩
             audio_blob = data["audioBlob"]
             audio_data = base64.b64decode(audio_blob)
@@ -97,6 +97,33 @@ class DeepInterviewConsumer(WebsocketConsumer):
 
             # 임시 파일 삭제
             os.unlink(temp_file_path)
+        # 대답만 추가하는 경우
+        else:
+            # base64 디코딩
+            audio_blob = data["audioBlob"]
+            audio_data = base64.b64decode(audio_blob)
+
+            # 오디오 파일로 변환
+            audio_file = ContentFile(audio_data)
+
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+            temp_file_path = temp_file.name
+
+            with open(temp_file_path, "wb") as file:
+                for chunk in audio_file.chunks():
+                    file.write(chunk)
+
+            # 텍스트 파일로 변환
+            with open(temp_file_path, "rb") as audio_file:
+                transcript = openai.Audio.transcribe("whisper-1", audio_file)
+
+            transcription = transcript["text"]
+
+            # Question 테이블의 마지막 Row 가져오기
+            last_low = Question.objects.latest("question_id")
+
+            # 답변 테이블에 추가
+            Answer.objects.create(content=transcription, question_id=last_low)
 
     # 질문과 대답 추가
     def add_question_answer(self, question, answer):
@@ -112,15 +139,15 @@ class DeepInterviewConsumer(WebsocketConsumer):
             temperature=0.7,
             stream=True,
         ):
+            finish_reason = chunk.choices[0].finish_reason
             if chunk.choices[0].finish_reason == "stop":
+                self.send(json.dumps({"message": "", "finish_reason": finish_reason}))
                 break
 
             message = chunk.choices[0].delta["content"]
-
             messages += message
-
             # 메시지를 클라이언트로 바로 전송
-            self.send(json.dumps({"message": message}))
+            self.send(json.dumps({"message": message, "finish_reason": finish_reason}))
 
         Question.objects.create(content=messages, form_id=form_object)
 

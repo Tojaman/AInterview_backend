@@ -49,7 +49,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "storages" "rest_framework",
+    "storages",
+    "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "drf_yasg",
@@ -105,8 +106,8 @@ WSGI_APPLICATION = "ainterview.wsgi.application"
 
 DATABASES = {
     "default": {
-        # "ENGINE": "django.db.backends.mysql",
-        "ENGINE": "mysql.connector.django",
+        "ENGINE": "django.db.backends.mysql",
+        # "ENGINE": "mysql.connector.django",
         "NAME": os.environ.get("MYSQL_NAME"),
         "USER": os.environ.get("MYSQL_USER"),
         "PASSWORD": os.environ.get("MYSQL_PASSWORD"),
