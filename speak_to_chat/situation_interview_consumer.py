@@ -5,7 +5,7 @@ import openai
 
 from ainterview.settings import FILE_URL
 from storage import get_file_url
-from .models import Form, Answer
+from .models import Form, Answer, GPTAnswer
 from dotenv import load_dotenv
 import os
 import json
@@ -98,6 +98,20 @@ class SituationInterviewConsumer(WebsocketConsumer):
             except:
                 error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
                 print(error_message)
+                
+            # =========================gpt_answer===============================
+            # 질문, 답변 텍스트 가져오기
+            question = last_low.content
+            answer = answer_object.content
+
+            # gpt 모범 답변 튜닝 및 생성
+            gpt_answer = add_gptanswer(question, answer)
+
+            # gpt 모범 답변 객체 생성
+            gpt_object = GPTAnswer.objects.create(
+                question_id=last_low, content=gpt_answer
+            )
+            # =========================gpt_answer===============================
 
             self.continue_conversation(form_object)
 
@@ -136,6 +150,20 @@ class SituationInterviewConsumer(WebsocketConsumer):
             Answer.objects.create(
                 content=transcription, question_id=last_low, recode_file=file_url
             )
+            
+            # =========================gpt_answer===============================
+            # 질문, 답변 텍스트 가져오기
+            question = last_low.content
+            answer = answer_object.content
+
+            # gpt 모범 답변 튜닝 및 생성
+            gpt_answer = add_gptanswer(question, answer)
+
+            # gpt 모범 답변 객체 생성
+            gpt_object = GPTAnswer.objects.create(
+                question_id=last_low, content=gpt_answer
+            )
+            # =========================gpt_answer===============================
 
     def continue_conversation(self, form_object):
         messages = ""
