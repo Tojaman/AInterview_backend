@@ -1,6 +1,9 @@
+import uuid
 
 from channels.generic.websocket import WebsocketConsumer
 import openai
+
+from storage import get_file_url
 from .models import Form
 from dotenv import load_dotenv
 import os
@@ -52,6 +55,9 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
             # 오디오 파일로 변환
             audio_file = ContentFile(audio_data)
 
+            # 파일 업로드 및 URL 받아오기
+            file_url = get_file_url(audio_file, uuid)
+
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
             temp_file_path = temp_file.name
 
@@ -69,7 +75,9 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
             last_low = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
-            Answer.objects.create(content=transcription, question_id=last_low)
+            Answer.objects.create(
+                content=transcription, question_id=last_low, record_file=file_url
+            )
             print(transcription)
 
             # formId를 통해서 question 테이블을 가져옴
@@ -107,6 +115,9 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
             # 오디오 파일로 변환
             audio_file = ContentFile(audio_data)
 
+            # 파일 업로드 및 URL 받아오기
+            file_url = get_file_url(audio_file, uuid)
+
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
             temp_file_path = temp_file.name
 
@@ -124,7 +135,9 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
             last_low = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
-            Answer.objects.create(content=transcription, question_id=last_low)
+            Answer.objects.create(
+                content=transcription, question_id=last_low, recode_file=file_url
+            )
 
     # 질문과 대답 추가
     def add_question_answer(self, question, answer):
