@@ -1,6 +1,22 @@
 version: "3"
 services:
 
+  mysql:
+    image: mysql:5.7
+    env_file:
+      - ./.env
+    container_name: ainterview_db
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: ${MYSQL_NAME}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    # 가상 네트워크 연결
+    networks:
+      - ai_net
+
   backend:
     env_file:
       - ./.env
@@ -18,41 +34,10 @@ services:
     ports:
       - 8000:8000
     # 가상 네트워크 연결
+    links:
+      - mysql:mysql
     networks:
       - ai_net
-
-  rabbitmq:
-    image: rabbitmq:3.7-management
-    container_name: rabbitmq_service
-    ports:
-      # Expose the port for the worker to add/get tasks
-      - 5672:5672
-      # OPTIONAL: Expose the GUI port
-      - 15672:15672
-    expose:
-      - 5672
-    environment:
-      - CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672//
-    depends_on:
-      - backend
-    networks:
-      - ai_net
-
-  celery:
-    container_name: celery_service
-    build:
-      context: .
-      dockerfile: dockerfile
-    environment:
-      - CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672//
-    # command: sh -c "celery -A ainterview worker -l info --pool=solo"
-    command: sh -c "celery -A ainterview worker -l info"
-    
-    networks:
-      - ai_net
-    depends_on:
-      - rabbitmq
-      - backend
 
 networks:
   ai_net:

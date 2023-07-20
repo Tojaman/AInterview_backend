@@ -12,8 +12,6 @@ RUN pip install python-dotenv
 
 
 
-
-
 # 소스 코드 복사
 COPY . .
 
