@@ -43,7 +43,7 @@ class DefaultInterviewConsumer(WebsocketConsumer):
             self.continue_conversation(form_object)
 
         # 오디오 파일이 있는 경우
-        else:
+        elif data["type"] == "withAudio":
             # base64 디코딩
             audio_blob = data["audioBlob"]
             audio_data = base64.b64decode(audio_blob)
@@ -71,7 +71,7 @@ class DefaultInterviewConsumer(WebsocketConsumer):
             last_low = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
-            Answer.objects.create(content=transcription, question_id=last_low)
+            Answer.objects.create(content=transcription, question_id=last_low, recode_file=file_url)
             answer_object = Answer.objects.latest("answer_id")
             print(transcription)
 
@@ -110,6 +110,51 @@ class DefaultInterviewConsumer(WebsocketConsumer):
 
             # 임시 파일 삭제
             os.unlink(temp_file_path)
+        
+        # 대답만 추가하는 경우
+        else:
+            # base64 디코딩
+            audio_blob = data["audioBlob"]
+            audio_data = base64.b64decode(audio_blob)
+
+            # 오디오 파일로 변환
+            audio_file = ContentFile(audio_data)
+
+            # 파일 업로드 및 URL 받아오기
+            file_url = get_file_url(audio_file, uuid)
+
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+            temp_file_path = temp_file.name
+
+            with open(temp_file_path, "wb") as file:
+                for chunk in audio_file.chunks():
+                    file.write(chunk)
+
+            # 텍스트 파일로 변환
+            with open(temp_file_path, "rb") as audio_file:
+                transcript = openai.Audio.transcribe("whisper-1", audio_file)
+
+            transcription = transcript["text"]
+
+            # Question 테이블의 마지막 Row 가져오기
+            last_low = Question.objects.latest("question_id")
+
+            # 답변 테이블에 추가
+            Answer.objects.create(content=transcription, question_id=last_low, recode_file=file_url)
+            
+            # =========================gpt_answer===============================
+            # 질문, 답변 텍스트 가져오기
+            question = last_low.content
+            answer = answer_object.content
+
+            # gpt 모범 답변 튜닝 및 생성
+            gpt_answer = add_gptanswer(question, answer)
+
+            # gpt 모범 답변 객체 생성
+            gpt_object = GPTAnswer.objects.create(
+                question_id=last_low, content=gpt_answer
+            )
+            # =========================gpt_answer===============================
 
     # 질문과 대답 추가
     def add_question_answer(self, question, answer):
