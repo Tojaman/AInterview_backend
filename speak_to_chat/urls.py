@@ -3,7 +3,6 @@ from django.urls import path, include
 from .views import (
     QnAview,
     GPTAnswerview,
-
 )
 
 from django.urls import re_path
@@ -24,4 +23,3 @@ urlpatterns = [
     re_path(r"personality-interview/$", PersonalityInterviewConsumer.as_asgi()),
     re_path(r"default-interview/$", DefaultInterviewConsumer.as_asgi()),
 ]
-

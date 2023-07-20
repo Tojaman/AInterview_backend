@@ -3,14 +3,14 @@ import openai
 from dotenv import load_dotenv
 import os
 import json
-from .models import Form, Question, Answer
+from .models import Form, Question, Answer, GPTAnswer
 from asgiref.sync import sync_to_async
 from django.core.files.base import ContentFile
 import tempfile
 import base64
 
 from .tasks import process_whisper_data
-from .gpt_answer import add_gptanswer # gpt_answer.py에서 add_gptanswer() 함수 불러옴
+from .gpt_answer import add_gptanswer  # gpt_answer.py에서 add_gptanswer() 함수 불러옴
 
 load_dotenv()
 openai.api_key = os.getenv("GPT_API_KEY")
@@ -89,17 +89,19 @@ class DefaultInterviewConsumer(WebsocketConsumer):
             except:
                 error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
                 print(error_message)
-                
-            # =========================gpt_answer===============================      
+
+            # =========================gpt_answer===============================
             # 질문, 답변 텍스트 가져오기
             question = last_low.content
             answer = answer_object.content
-            
+
             # gpt 모범 답변 튜닝 및 생성
             gpt_answer = add_gptanswer(question, answer)
-            
+
             # gpt 모범 답변 객체 생성
-            gpt_object = GPTAnswer.objects.create(question_id=question_object, content=gpt_answer)
+            gpt_object = GPTAnswer.objects.create(
+                question_id=last_low, content=gpt_answer
+            )
             # =========================gpt_answer===============================
 
             self.continue_conversation(form_object)
@@ -114,7 +116,7 @@ class DefaultInterviewConsumer(WebsocketConsumer):
         existing_content = self.conversation[0]["content"]  # 기존 content 가져오기
         new_content = existing_content + " Q. " + question + " A. " + answer
         self.conversation[0]["content"] = new_content
-        
+
     def continue_conversation(self, form_object):
         messages = ""
         # stream으로 메시지 받아오는 반복문
@@ -124,7 +126,7 @@ class DefaultInterviewConsumer(WebsocketConsumer):
             temperature=0.7,
             stream=True,
         ):
-        # 파이썬은 들여쓰기로 블록을 설정할 수 있음. 따라서, 아래 코드들 모두 for문 안에 속한 것임
+            # 파이썬은 들여쓰기로 블록을 설정할 수 있음. 따라서, 아래 코드들 모두 for문 안에 속한 것임
             # 메시지 처리가 완료되었는지 확인
             finish_reason = chunk.choices[0].finish_reason
             # stop일 경우 대화가 끝났으니깐 send()로 WebSocket을 통해 Client에게 빈 메시지 전송하고 for 반복문 탈출
@@ -141,7 +143,7 @@ class DefaultInterviewConsumer(WebsocketConsumer):
 
     # 기본 면접 기본 튜닝
     def default_tuning(self):
-            # 대화 시작 메시지 추가
+        # 대화 시작 메시지 추가
         self.conversation.append(
             {
                 "role": "system",
@@ -165,6 +167,6 @@ class DefaultInterviewConsumer(WebsocketConsumer):
                         Example questions would be questions such as "What motivated you to apply for our company?", "Talk about your strengths and weaknesses."\
                         Keep in mind that these are the basic questions that you ask in an interview regardless of your occupation\
                         Let me know this is the last question.\
-                        You must speak only in Korean during the interview.] personality_interview("5")'
+                        You must speak only in Korean during the interview.] personality_interview("5")',
             }
         )
