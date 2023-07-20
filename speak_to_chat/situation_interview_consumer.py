@@ -18,6 +18,7 @@ import base64
 load_dotenv()
 openai.api_key = os.getenv("GPT_API_KEY")
 
+
 class SituationInterviewConsumer(WebsocketConsumer):
     def connect(self):
         self.accept()
@@ -74,7 +75,9 @@ class SituationInterviewConsumer(WebsocketConsumer):
             last_low = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
-            Answer.objects.create(content=transcription, question_id=last_low, recode_file=file_url)
+            Answer.objects.create(
+                content=transcription, question_id=last_low, recode_file=file_url
+            )
             print(transcription)
 
             # formId를 통해서 question 테이블을 가져옴
@@ -130,7 +133,9 @@ class SituationInterviewConsumer(WebsocketConsumer):
             last_low = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
-            Answer.objects.create(content=transcription, question_id=last_low, recode_file=file_url)
+            Answer.objects.create(
+                content=transcription, question_id=last_low, recode_file=file_url
+            )
 
     def continue_conversation(self, form_object):
         messages = ""
@@ -159,7 +164,7 @@ class SituationInterviewConsumer(WebsocketConsumer):
             {
                 "role": "user",
                 "content": 'function_name: [situation_interview] input: ["sector", "job", "career"] rule: [You are an expert in recruitment and interviewer specializing in finding the best talent. Ask questions that can judge my ability to cope with situations based “job”  and ask one question at a time. For example,let\'s say company = IT company, job = web front-end developer, career = newcomer. Then you can recognize that I am a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information. Such as "You have been assigned to work on a project where the design team has provided you with a visually appealing but intricate UI design for a web page. As you start implementing it, you realize that some of the design elements may not be feasible to achieve with the current technology or may negatively impact the performance. How would you handle this situation?". Do not ask this example question.]'
-                + 'function_name: [default] rule: [You should keep creating new questions creatively.You should never ask the same or similar questions before you generate at least 100 different questions. and ask one question at a time.You must speak only in Korean during the interview. from now on, You can only ask questions.You can\'t answer.]'
+                + "function_name: [default] rule: [You should keep creating new questions creatively.You should never ask the same or similar questions before you generate at least 100 different questions. and ask one question at a time.You must speak only in Korean during the interview. from now on, You can only ask questions.You can't answer.]"
                 + "situation_interview(Company="
                 + seletor_name
                 + ", Job="

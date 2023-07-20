@@ -51,7 +51,6 @@ class LoginView(generics.GenericAPIView):
             'access': str(refresh.access_token),
         })
 
-
 # 로그아웃
 class LogoutView(APIView):
     parser_classes = [JSONParser]
@@ -69,7 +68,6 @@ class LogoutView(APIView):
             return Response(status=status.HTTP_205_RESET_CONTENT)
         except Exception as e:
             return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
-
 
 # soft-delete
 class DeleteUserView(generics.DestroyAPIView):

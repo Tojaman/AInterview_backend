@@ -26,6 +26,8 @@ import random
 from django.http import HttpResponse
 from django.http import JsonResponse
 
+from .tasks import process_whisper_data
+
 load_dotenv()
 openai.api_key = os.getenv("GPT_API_KEY")
 

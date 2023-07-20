@@ -75,7 +75,9 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
             last_low = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
-            Answer.objects.create(content=transcription, question_id=last_low, record_file=file_url)
+            Answer.objects.create(
+                content=transcription, question_id=last_low, record_file=file_url
+            )
             print(transcription)
 
             # formId를 통해서 question 테이블을 가져옴
@@ -133,7 +135,9 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
             last_low = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
-            Answer.objects.create(content=transcription, question_id=last_low, recode_file=file_url)
+            Answer.objects.create(
+                content=transcription, question_id=last_low, recode_file=file_url
+            )
 
     # 질문과 대답 추가
     def add_question_answer(self, question, answer):
