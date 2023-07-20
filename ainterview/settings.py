@@ -42,12 +42,14 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "storages",
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
@@ -57,7 +59,10 @@ INSTALLED_APPS = [
     "django_celery_beat",
     "django_celery_results",
     "speak_to_chat",
+    "corsheaders",
 ]
+
+ASGI_APPLICATION = "ainterview.asgi.application"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -67,7 +72,13 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
 ]
+
+
+# CORS 설정 - whitelist 에 추가된 주소 접근 허용
+CORS_ORIGIN_WHITELIST = ["http://127.0.0.1:3000", "http://localhost:3000"]
+CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = "ainterview.urls"
 
@@ -100,13 +111,13 @@ DATABASES = {
         "NAME": os.environ.get("MYSQL_NAME"),
         "USER": os.environ.get("MYSQL_USER"),
         "PASSWORD": os.environ.get("MYSQL_PASSWORD"),
-        # "HOST": "localhost",
+        "HOST": "localhost",
         # docker-compose 사용 시 사용
-        "HOST": "127.0.0.1",
+        # "HOST": "ainterview_db",
         "PORT": os.environ.get("MYSQL_PORT"),
     }
 }
-
+CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -198,3 +209,20 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.FormParser",
     ],
 }
+
+###AWS#### AWS 액세스 키 설정
+AWS_ACCESS_KEY_ID = os.environ.get("MY_AWS_ACCESS_KEY")
+AWS_SECRET_ACCESS_KEY = os.environ.get("MY_AWS_SECRET_ACCESS_KEY")
+
+# S3 버킷 및 파일 저장 경로 설정
+AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
+# S3 파일 URL 설정
+AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+AWS_S3_OBJECT_PARAMETERS = {
+    "CacheControl": "max-age=86400",
+}
+
+FILE_URL = "https://" + AWS_S3_CUSTOM_DOMAIN
+
+# 기본 스토리지를 S3 스토리지로 설정
+DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
