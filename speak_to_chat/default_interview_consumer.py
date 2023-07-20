@@ -1,6 +1,5 @@
 from channels.generic.websocket import WebsocketConsumer
 import openai
-from .models import Form
 from dotenv import load_dotenv
 import os
 import json

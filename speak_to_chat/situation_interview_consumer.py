@@ -1,7 +1,7 @@
 from channels.generic.websocket import WebsocketConsumer
 import openai
 
-from ainterview.settings import FILE_URL
+#from ainterview.settings import FILE_URL
 from storage import upload_mp3
 from .models import Form, Answer
 from dotenv import load_dotenv

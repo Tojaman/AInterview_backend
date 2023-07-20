@@ -1,5 +1,23 @@
+# yml 파일 포맷의 version 설정
 version: "3"
+
+# 띄울 컨테이너 목록
 services:
+  mysql:
+    image: mysql:8
+    env_file:
+      - ./.env
+    container_name: ainterview_db
+    ports:
+      - "3305:3306"
+    environment:
+      MYSQL_DATABASE: ${MYSQL_NAME}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    # 가상 네트워크 연결
+    networks:
+      - ai_net
 
   backend:
     env_file:
@@ -33,6 +51,8 @@ services:
       - 5672
     environment:
       - CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672//
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
     depends_on:
       - backend
     networks:
