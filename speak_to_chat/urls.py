@@ -3,7 +3,6 @@ from django.urls import path, include
 from .views import (
     DefaultInterview,
     SituationInterview,
-    DeepInterview,
     PersonalityInterview,
     QnAview,
     GPTAnswerview,
