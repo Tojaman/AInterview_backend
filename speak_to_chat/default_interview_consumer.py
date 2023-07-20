@@ -26,6 +26,7 @@ class DefaultInterviewConsumer(WebsocketConsumer):
         pass
 
     def receive(self, text_data):
+        # 클라이언트가 WebSocket을 통해 서버로 보낸 데이터를 JSON 형식으로 파싱하여 Python의 딕셔너리 형태로 변환하여 Python의 딕셔너리인 data에 저장
         data = json.loads(text_data)
 
         print(data["formId"])
@@ -40,6 +41,8 @@ class DefaultInterviewConsumer(WebsocketConsumer):
 
             # 대화 계속하기
             self.continue_conversation(form_object)
+
+        # 오디오 파일이 있는 경우
         else:
             # base64 디코딩
             audio_blob = data["audioBlob"]
@@ -48,14 +51,17 @@ class DefaultInterviewConsumer(WebsocketConsumer):
             # 오디오 파일로 변환
             audio_file = ContentFile(audio_data)
 
+            # tempfile : 임시 파일 생성하는 파이썬 라이브러리
+            # NamedTemporaryFile() : 임시 파일 객체 반환
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
             temp_file_path = temp_file.name
 
             with open(temp_file_path, "wb") as file:
+                # audio_file을 chunks() 메서드를 통해 블록 단위로 데이터를 읽어와서 file(temp_file_path)에 기록
                 for chunk in audio_file.chunks():
                     file.write(chunk)
 
-            # 텍스트 파일로 변환
+            # 블록 단위의 음성 파일을 저장하고 있는 temp_file_path을 whisper API로 텍스트로 변환
             with open(temp_file_path, "rb") as audio_file:
                 transcript = openai.Audio.transcribe("whisper-1", audio_file)
 
@@ -108,24 +114,28 @@ class DefaultInterviewConsumer(WebsocketConsumer):
         existing_content = self.conversation[0]["content"]  # 기존 content 가져오기
         new_content = existing_content + " Q. " + question + " A. " + answer
         self.conversation[0]["content"] = new_content
-
+        
     def continue_conversation(self, form_object):
         messages = ""
+        # stream으로 메시지 받아오는 반복문
         for chunk in openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=self.conversation,
             temperature=0.7,
             stream=True,
         ):
+        # 파이썬은 들여쓰기로 블록을 설정할 수 있음. 따라서, 아래 코드들 모두 for문 안에 속한 것임
+            # 메시지 처리가 완료되었는지 확인
+            finish_reason = chunk.choices[0].finish_reason
+            # stop일 경우 대화가 끝났으니깐 send()로 WebSocket을 통해 Client에게 빈 메시지 전송하고 for 반복문 탈출
             if chunk.choices[0].finish_reason == "stop":
+                self.send(json.dumps({"message": "", "finish_reason": finish_reason}))
                 break
-
+            # gpt가 생성한 메시지를 message에 저장
             message = chunk.choices[0].delta["content"]
-
             messages += message
-
             # 메시지를 클라이언트로 바로 전송
-            self.send(json.dumps({"message": message}))
+            self.send(json.dumps({"message": message, "finish_reason": finish_reason}))
 
         Question.objects.create(content=messages, form_id=form_object)
 

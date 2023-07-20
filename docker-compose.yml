@@ -36,6 +36,8 @@ services:
     ports:
       - 8000:8000
     # 가상 네트워크 연결
+    links:
+      - mysql:mysql
     networks:
       - ai_net
 
