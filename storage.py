@@ -1,11 +1,22 @@
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
+import boto3
+from ainterview.settings import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME, FILE_URL
 
-def upload_mp3(mp3_file, file_path):
-    # S3에 파일 업로드
-    default_storage.save(file_path, mp3_file.read())
+def get_file_url(data, uuid):
+    # AWS SDK 클라이언트 생성:
+    s3_client = boto3.client(
+        's3',
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    )
 
-    # 업로드된 파일의 URL 가져오기
-    file_url = default_storage.url(file_path)
+    file_key = "test1/" + str(uuid.uuid4()) + ".mp3"
 
-    return file_url
+    # 파일을 S3 버킷에 업로드합니다.
+    s3_client.put_object(Body=data, Bucket=AWS_STORAGE_BUCKET_NAME, Key=file_key)
+
+    # 업로드된 파일의 URL을 구성합니다.
+    url = FILE_URL +"/"+ file_key
+
+    # URL 문자열에서 공백을 "_"로 대체합니다.
+    url = url.replace(" ", "_")
+    return url
