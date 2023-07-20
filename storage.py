@@ -11,12 +11,12 @@ def get_file_url(data, uuid):
 
     file_key = "test1/" + str(uuid.uuid4()) + ".mp3"
 
-    # 파일을 S3 버킷에 업로드합니다.
+    # 파일을 S3 버킷에 업로드
     s3_client.put_object(Body=data, Bucket=AWS_STORAGE_BUCKET_NAME, Key=file_key)
 
-    # 업로드된 파일의 URL을 구성합니다.
+    # 업로드된 파일의 URL을 구성
     url = FILE_URL +"/"+ file_key
 
-    # URL 문자열에서 공백을 "_"로 대체합니다.
+    # URL 문자열에서 공백을 "_"로 대체
     url = url.replace(" ", "_")
     return url
