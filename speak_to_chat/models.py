@@ -38,7 +38,6 @@ class Answer(models.Model):
     class Meta:
         db_table = "answer"
 
-
 class GPTAnswer(models.Model):
     gptanswer_id = models.AutoField(primary_key=True, db_column="question_id")
     content = models.TextField()
@@ -56,3 +55,4 @@ class GPTAnswer(models.Model):
 
     class Meta:
         db_table = "gptanswer"
+

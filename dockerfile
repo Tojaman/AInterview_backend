@@ -7,7 +7,8 @@ WORKDIR /app
 # 필요한 패키지 설치
 RUN pip install --upgrade pip
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt && pip install gevent
+RUN pip install python-dotenv
 
 
 
