@@ -9,8 +9,6 @@ RUN pip install --upgrade pip
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-
-
 # 소스 코드 복사
 COPY . .
 
