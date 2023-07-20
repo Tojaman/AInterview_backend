@@ -106,8 +106,8 @@ WSGI_APPLICATION = "ainterview.wsgi.application"
 
 DATABASES = {
     "default": {
-        # "ENGINE": "django.db.backends.mysql",
-        "ENGINE": "mysql.connector.django",
+        "ENGINE": "django.db.backends.mysql",
+        # "ENGINE": "mysql.connector.django",
         "NAME": os.environ.get("MYSQL_NAME"),
         "USER": os.environ.get("MYSQL_USER"),
         "PASSWORD": os.environ.get("MYSQL_PASSWORD"),
@@ -226,4 +226,3 @@ FILE_URL = "https://" + AWS_S3_CUSTOM_DOMAIN
 
 # 기본 스토리지를 S3 스토리지로 설정
 DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
-
