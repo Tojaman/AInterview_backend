@@ -13,6 +13,7 @@ from asgiref.sync import sync_to_async
 from django.core.files.base import ContentFile
 import tempfile
 import base64
+from .tasks import process_whisper_data
 
 load_dotenv()
 openai.api_key = os.getenv("GPT_API_KEY")
@@ -65,9 +66,11 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
                 for chunk in audio_file.chunks():
                     file.write(chunk)
 
+            transcript = process_whisper_data.delay(temp_file_path)
+
             # 텍스트 파일로 변환
-            with open(temp_file_path, "rb") as audio_file:
-                transcript = openai.Audio.transcribe("whisper-1", audio_file)
+            # with open(temp_file_path, "rb") as audio_file:
+            #     transcript = openai.Audio.transcribe("whisper-1", audio_file)
 
             transcription = transcript["text"]
 
@@ -138,9 +141,10 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
                 for chunk in audio_file.chunks():
                     file.write(chunk)
 
+            transcript = process_whisper_data.delay(temp_file_path)
             # 텍스트 파일로 변환
-            with open(temp_file_path, "rb") as audio_file:
-                transcript = openai.Audio.transcribe("whisper-1", audio_file)
+            # with open(temp_file_path, "rb") as audio_file:
+            #     transcript = openai.Audio.transcribe("whisper-1", audio_file)
 
             transcription = transcript["text"]
 
