@@ -78,8 +78,14 @@ MIDDLEWARE = [
 
 
 # CORS 설정 - whitelist 에 추가된 주소 접근 허용
-CORS_ORIGIN_WHITELIST = ["http://127.0.0.1:3000", "http://localhost:3000"]
+CORS_ORIGIN_WHITELIST = [
+    "http://127.0.0.1:3000",
+    "http://localhost:3000",
+    "http://frontend:3000",
+    "http://backend:8000",
+]
 CORS_ALLOW_CREDENTIALS = True
+ALLOWED_HOSTS = ["backend"]
 
 ROOT_URLCONF = "ainterview.urls"
 
@@ -112,11 +118,9 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
         # "ENGINE": "mysql.connector.django",
-        "NAME": os.environ.get("MYSQL_NAME"),
+        "NAME": os.environ.get("MYSQL_DATABASE"),
         "USER": os.environ.get("MYSQL_USER"),
         "PASSWORD": os.environ.get("MYSQL_PASSWORD"),
-        # "HOST": "localhost",
-        # docker-compose 사용 시 사용
         "HOST": "ainterview_db",
         "PORT": os.environ.get("MYSQL_PORT"),
     }
