@@ -59,7 +59,17 @@ class DefaultInterviewConsumer(WebsocketConsumer):
             # 앱 디렉토리 내부의 audio 디렉토리에 임시 파일로 저장
             app_directory = os.path.dirname(os.path.abspath(__file__))
             audio_directory = os.path.join(app_directory, 'audio')
-            temp_file_path = os.path.join(audio_directory, f"{uuid}.mp3")
+
+            # audio 디렉토리가 존재하지 않으면 생성
+            if not os.path.exists(audio_directory):
+                os.makedirs(audio_directory)
+
+            # temp_file_path = os.path.join(audio_directory, f"{uuid}.mp3")
+            
+            # 고유한 파일명 생성 (uuid.uuid4() 함수 사용)
+            unique_filename = str(uuid.uuid4())
+
+            temp_file_path = os.path.join(audio_directory, f"{unique_filename}.mp3")
 
             with open(temp_file_path, "wb") as file:
                 # audio_file을 chunks() 메서드를 통해 블록 단위로 데이터를 읽어와서 file(temp_file_path)에 기록
@@ -135,7 +145,17 @@ class DefaultInterviewConsumer(WebsocketConsumer):
             # 앱 디렉토리 내부의 audio 디렉토리에 임시 파일로 저장
             app_directory = os.path.dirname(os.path.abspath(__file__))
             audio_directory = os.path.join(app_directory, 'audio')
-            temp_file_path = os.path.join(audio_directory, f"{uuid}.mp3")
+
+            # audio 디렉토리가 존재하지 않으면 생성
+            if not os.path.exists(audio_directory):
+                os.makedirs(audio_directory)
+
+            # temp_file_path = os.path.join(audio_directory, f"{uuid}.mp3")
+            
+            # 고유한 파일명 생성 (uuid.uuid4() 함수 사용)
+            unique_filename = str(uuid.uuid4())
+
+            temp_file_path = os.path.join(audio_directory, f"{unique_filename}.mp3")
 
             with open(temp_file_path, "wb") as file:
                 for chunk in audio_file.chunks():
