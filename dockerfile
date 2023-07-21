@@ -15,3 +15,4 @@ COPY . /backend/
 
 # Django 프로젝트 실행
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# ENTRYPOINT ["daphne", "-b", "0.0.0.0", "ainterview.asgi:application"]
