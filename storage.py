@@ -9,7 +9,7 @@ def get_file_url(data, uuid):
         aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
     )
 
-    file_key = "test1/" + str(uuid.uuid4()) + ".mp3"
+    file_key = "record/" + str(uuid.uuid4()) + ".mp3"
 
     # 파일을 S3 버킷에 업로드
     s3_client.put_object(Body=data, Bucket=AWS_STORAGE_BUCKET_NAME, Key=file_key)

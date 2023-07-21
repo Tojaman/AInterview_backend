@@ -85,7 +85,7 @@ CORS_ORIGIN_WHITELIST = [
     "http://backend:8000",
 ]
 CORS_ALLOW_CREDENTIALS = True
-ALLOWED_HOSTS = ["backend"]
+ALLOWED_HOSTS = ["backend", "localhost"]
 
 ROOT_URLCONF = "ainterview.urls"
 
