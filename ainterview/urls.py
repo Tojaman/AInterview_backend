@@ -18,7 +18,7 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path("api/users/", include("users.urls")),
-    path("forms/", include("forms.urls")),
+    path("api/forms/", include("forms.urls")),
     # path(r'swagger(?P<format>\.json|\.yaml)', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     path(
         "swagger.<str:format>",
@@ -35,5 +35,5 @@ urlpatterns = [
         r"redoc", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc-v1"
     ),
     path("admin/", admin.site.urls),
-    path("", include("speak_to_chat.urls")),
+    path("api/", include("speak_to_chat.urls")),
 ]
