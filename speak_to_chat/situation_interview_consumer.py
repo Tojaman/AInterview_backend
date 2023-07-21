@@ -77,7 +77,7 @@ class SituationInterviewConsumer(WebsocketConsumer):
             # 고유한 파일명 생성 (uuid.uuid4() 함수 사용)
             unique_filename = str(uuid.uuid4())
 
-            temp_file_path = os.path.join(audio_directory, f"{unique_filename}.mp3")
+            temp_file_path = os.path.join(audio_directory, f"{unique_filename}.wav")
 
             with open(temp_file_path, "wb") as file:
                 for chunk in audio_file.chunks():
@@ -135,10 +135,10 @@ class SituationInterviewConsumer(WebsocketConsumer):
 
             self.continue_conversation(form_object)
 
-            temp_file.close()
+            #temp_file.close()
 
             # 임시 파일 삭제
-            os.unlink(temp_file_path)
+            #os.unlink(temp_file_path)
         else:
             # base64 디코딩
             audio_blob = data["audioBlob"]
@@ -166,7 +166,7 @@ class SituationInterviewConsumer(WebsocketConsumer):
             # 고유한 파일명 생성 (uuid.uuid4() 함수 사용)
             unique_filename = str(uuid.uuid4())
 
-            temp_file_path = os.path.join(audio_directory, f"{unique_filename}.mp3")
+            temp_file_path = os.path.join(audio_directory, f"{unique_filename}.wav")
 
             with open(temp_file_path, "wb") as file:
                 for chunk in audio_file.chunks():

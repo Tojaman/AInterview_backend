@@ -53,7 +53,7 @@ class DefaultInterviewConsumer(WebsocketConsumer):
 
             # tempfile : 임시 파일 생성하는 파이썬 라이브러리
             # NamedTemporaryFile() : 임시 파일 객체 반환
-            # temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+            # cc
             # temp_file_path = temp_file.name
             
             # 앱 디렉토리 내부의 audio 디렉토리에 임시 파일로 저장
@@ -69,7 +69,7 @@ class DefaultInterviewConsumer(WebsocketConsumer):
             # 고유한 파일명 생성 (uuid.uuid4() 함수 사용)
             unique_filename = str(uuid.uuid4())
 
-            temp_file_path = os.path.join(audio_directory, f"{unique_filename}.mp3")
+            temp_file_path = os.path.join(audio_directory, f"{unique_filename}.wav")
 
             with open(temp_file_path, "wb") as file:
                 # audio_file을 chunks() 메서드를 통해 블록 단위로 데이터를 읽어와서 file(temp_file_path)에 기록
@@ -122,10 +122,10 @@ class DefaultInterviewConsumer(WebsocketConsumer):
 
             self.continue_conversation(form_object)
 
-            temp_file.close()
+            #temp_file.close()
 
             # 임시 파일 삭제
-            os.unlink(temp_file_path)
+            #os.unlink(temp_file_path)
         
         # 대답만 추가하는 경우
         else:
@@ -155,7 +155,7 @@ class DefaultInterviewConsumer(WebsocketConsumer):
             # 고유한 파일명 생성 (uuid.uuid4() 함수 사용)
             unique_filename = str(uuid.uuid4())
 
-            temp_file_path = os.path.join(audio_directory, f"{unique_filename}.mp3")
+            temp_file_path = os.path.join(audio_directory, f"{unique_filename}.wav")
 
             with open(temp_file_path, "wb") as file:
                 for chunk in audio_file.chunks():
