@@ -53,19 +53,25 @@ class DefaultInterviewConsumer(WebsocketConsumer):
 
             # tempfile : 임시 파일 생성하는 파이썬 라이브러리
             # NamedTemporaryFile() : 임시 파일 객체 반환
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-            temp_file_path = temp_file.name
+            # temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+            # temp_file_path = temp_file.name
+            
+            # 앱 디렉토리 내부의 audio 디렉토리에 임시 파일로 저장
+            app_directory = os.path.dirname(os.path.abspath(__file__))
+            audio_directory = os.path.join(app_directory, 'audio')
+            temp_file_path = os.path.join(audio_directory, f"{uuid}.mp3")
 
             with open(temp_file_path, "wb") as file:
                 # audio_file을 chunks() 메서드를 통해 블록 단위로 데이터를 읽어와서 file(temp_file_path)에 기록
                 for chunk in audio_file.chunks():
                     file.write(chunk)
 
-            # 블록 단위의 음성 파일을 저장하고 있는 temp_file_path을 whisper API로 텍스트로 변환
-            with open(temp_file_path, "rb") as audio_file:
-                transcript = openai.Audio.transcribe("whisper-1", audio_file)
+            transcription = process_whisper_data.delay(temp_file_path)
+            # 텍스트 파일로 변환
+            # with open(temp_file_path, "rb") as audio_file:
+            #     transcript = openai.Audio.transcribe("whisper-1", audio_file)
 
-            transcription = transcript["text"]
+            # transcription = transcript["text"]
 
             # Question 테이블의 마지막 Row 가져오기
             last_low = Question.objects.latest("question_id")
@@ -123,25 +129,31 @@ class DefaultInterviewConsumer(WebsocketConsumer):
             # 파일 업로드 및 URL 받아오기
             file_url = get_file_url(audio_file, uuid)
 
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-            temp_file_path = temp_file.name
+            # temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+            # temp_file_path = temp_file.name
+            
+            # 앱 디렉토리 내부의 audio 디렉토리에 임시 파일로 저장
+            app_directory = os.path.dirname(os.path.abspath(__file__))
+            audio_directory = os.path.join(app_directory, 'audio')
+            temp_file_path = os.path.join(audio_directory, f"{uuid}.mp3")
 
             with open(temp_file_path, "wb") as file:
                 for chunk in audio_file.chunks():
                     file.write(chunk)
 
+            transcription = process_whisper_data.delay(temp_file_path)
             # 텍스트 파일로 변환
-            with open(temp_file_path, "rb") as audio_file:
-                transcript = openai.Audio.transcribe("whisper-1", audio_file)
+            # with open(temp_file_path, "rb") as audio_file:
+            #     transcript = openai.Audio.transcribe("whisper-1", audio_file)
 
-            transcription = transcript["text"]
+            # transcription = transcript["text"]
 
             # Question 테이블의 마지막 Row 가져오기
             last_low = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
             Answer.objects.create(content=transcription, question_id=last_low, recode_file=file_url)
-            
+            answer_object = Answer.objects.latest("answer_id")
             # =========================gpt_answer===============================
             # 질문, 답변 텍스트 가져오기
             question = last_low.content
