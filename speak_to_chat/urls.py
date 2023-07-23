@@ -2,7 +2,7 @@ from django.urls import path, include
 
 from .views import (
     QnAview,
-    GPTAnswerview,
+    GPTAnswerView,
 )
 
 from django.urls import re_path
@@ -15,7 +15,7 @@ from .default_interview_consumer import DefaultInterviewConsumer
 
 urlpatterns = [
     path("qna/", QnAview.as_view()),
-    path("gptanswer/", GPTAnswerview.as_view()),
+    path("gptanswer/", GPTAnswerView.as_view()),
     re_path(r"deep-interview/$", DeepInterviewConsumer.as_asgi()),
     re_path(r"situation-interview/$", SituationInterviewConsumer.as_asgi()),
     re_path(r"personality-interview/$", PersonalityInterviewConsumer.as_asgi()),

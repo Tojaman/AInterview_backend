@@ -91,11 +91,11 @@ class SituationInterviewConsumer(WebsocketConsumer):
             transcription = transcript["text"]
 
             # Question 테이블의 마지막 Row 가져오기
-            last_low = Question.objects.latest("question_id")
+            last_row = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
             Answer.objects.create(
-                content=transcription, question_id=last_low, recode_file=file_url
+                content=transcription, question_id=last_row, recode_file=file_url
             )
             print(transcription)
 
@@ -117,20 +117,6 @@ class SituationInterviewConsumer(WebsocketConsumer):
             except:
                 error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
                 print(error_message)
-                
-            # # =========================gpt_answer===============================
-            # # 질문, 답변 텍스트 가져오기
-            # question = last_low.content
-            # answer = answer_object.content
-
-            # # gpt 모범 답변 튜닝 및 생성
-            # gpt_answer = add_gptanswer(question, answer)
-
-            # # gpt 모범 답변 객체 생성
-            # gpt_object = GPTAnswer.objects.create(
-            #     question_id=last_low, content=gpt_answer
-            # )
-            # # =========================gpt_answer===============================
 
             self.continue_conversation(form_object)
 
@@ -163,26 +149,12 @@ class SituationInterviewConsumer(WebsocketConsumer):
             transcription = transcript["text"]
 
             # Question 테이블의 마지막 Row 가져오기
-            last_low = Question.objects.latest("question_id")
+            last_row = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
             Answer.objects.create(
-                content=transcription, question_id=last_low, recode_file=file_url
+                content=transcription, question_id=last_row, recode_file=file_url
             )
-            
-            # # =========================gpt_answer===============================
-            # # 질문, 답변 텍스트 가져오기
-            # question = last_low.content
-            # answer = answer_object.content
-
-            # # gpt 모범 답변 튜닝 및 생성
-            # gpt_answer = add_gptanswer(question, answer)
-
-            # # gpt 모범 답변 객체 생성
-            # gpt_object = GPTAnswer.objects.create(
-            #     question_id=last_low, content=gpt_answer
-            # )
-            # # =========================gpt_answer===============================
             
         else:
             self.question_number = data["questionNum"]
