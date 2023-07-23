@@ -9,7 +9,6 @@ RUN pip install --upgrade pip
 COPY requirements.txt /backend/
 RUN pip install -r requirements.txt && pip install gevent
 RUN pip install python-dotenv
-RUN pip install pika
 # pika 추가
 
 # 소스 코드 복사
