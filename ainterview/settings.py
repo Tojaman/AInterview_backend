@@ -85,7 +85,7 @@ CORS_ORIGIN_WHITELIST = [
     "http://backend:8000",
 ]
 CORS_ALLOW_CREDENTIALS = True
-ALLOWED_HOSTS = ["backend"]
+ALLOWED_HOSTS = ["backend", "localhost"]
 
 ROOT_URLCONF = "ainterview.urls"
 
@@ -218,6 +218,7 @@ AWS_SECRET_ACCESS_KEY = os.environ.get("MY_AWS_SECRET_ACCESS_KEY")
 
 # S3 버킷 및 파일 저장 경로 설정
 AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
+
 # S3 파일 URL 설정
 AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
 AWS_S3_OBJECT_PARAMETERS = {

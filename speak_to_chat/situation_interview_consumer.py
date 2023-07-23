@@ -26,13 +26,32 @@ class SituationInterviewConsumer(WebsocketConsumer):
         self.conversation = []
 
     def disconnect(self, close_code):
-        pass
+        
+
+        print(self.question_number) 
+        print(self.form_id)
+        form_object = Form.objects.get(id=self.form_id)
+        # 만약에 중간에 끊킨 경우, form_id와 관련된 것 전부 삭제
+        questions = Question.objects.filter(form_id=form_object)
+        question_numbers = questions.count()
+        print(question_numbers)
+        
+        if question_numbers != self.question_number:
+            Question.objects.filter(form_id=self.form_id).delete()
+        
+        for question in questions:
+            try:
+                answer = question.answer
+                print(answer)
+            except:
+                Question.objects.filter(form_id=self.form_id).delete() 
+
 
     def receive(self, text_data):
         data = json.loads(text_data)
 
-        print(data["formId"])
-        print(data["type"])
+        self.form_id = data["formId"]
+        self.question_number = data["questionNum"]
 
         # 오디오 파일이 없는 경우
         if data["type"] == "withoutAudio":
@@ -99,19 +118,19 @@ class SituationInterviewConsumer(WebsocketConsumer):
                 error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
                 print(error_message)
                 
-            # =========================gpt_answer===============================
-            # 질문, 답변 텍스트 가져오기
-            question = last_low.content
-            answer = answer_object.content
+            # # =========================gpt_answer===============================
+            # # 질문, 답변 텍스트 가져오기
+            # question = last_low.content
+            # answer = answer_object.content
 
-            # gpt 모범 답변 튜닝 및 생성
-            gpt_answer = add_gptanswer(question, answer)
+            # # gpt 모범 답변 튜닝 및 생성
+            # gpt_answer = add_gptanswer(question, answer)
 
-            # gpt 모범 답변 객체 생성
-            gpt_object = GPTAnswer.objects.create(
-                question_id=last_low, content=gpt_answer
-            )
-            # =========================gpt_answer===============================
+            # # gpt 모범 답변 객체 생성
+            # gpt_object = GPTAnswer.objects.create(
+            #     question_id=last_low, content=gpt_answer
+            # )
+            # # =========================gpt_answer===============================
 
             self.continue_conversation(form_object)
 
@@ -119,7 +138,7 @@ class SituationInterviewConsumer(WebsocketConsumer):
 
             # 임시 파일 삭제
             os.unlink(temp_file_path)
-        else:
+        elif data["type"] == "noReply":
             # base64 디코딩
             audio_blob = data["audioBlob"]
             audio_data = base64.b64decode(audio_blob)
@@ -151,19 +170,22 @@ class SituationInterviewConsumer(WebsocketConsumer):
                 content=transcription, question_id=last_low, recode_file=file_url
             )
             
-            # =========================gpt_answer===============================
-            # 질문, 답변 텍스트 가져오기
-            question = last_low.content
-            answer = answer_object.content
+            # # =========================gpt_answer===============================
+            # # 질문, 답변 텍스트 가져오기
+            # question = last_low.content
+            # answer = answer_object.content
 
-            # gpt 모범 답변 튜닝 및 생성
-            gpt_answer = add_gptanswer(question, answer)
+            # # gpt 모범 답변 튜닝 및 생성
+            # gpt_answer = add_gptanswer(question, answer)
 
-            # gpt 모범 답변 객체 생성
-            gpt_object = GPTAnswer.objects.create(
-                question_id=last_low, content=gpt_answer
-            )
-            # =========================gpt_answer===============================
+            # # gpt 모범 답변 객체 생성
+            # gpt_object = GPTAnswer.objects.create(
+            #     question_id=last_low, content=gpt_answer
+            # )
+            # # =========================gpt_answer===============================
+            
+        else:
+            self.question_number = data["questionNum"]
 
     def continue_conversation(self, form_object):
         messages = ""

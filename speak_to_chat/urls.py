@@ -12,8 +12,6 @@ from .personality_interview_consumer import PersonalityInterviewConsumer
 from .default_interview_consumer import DefaultInterviewConsumer
 
 
-    
-
 
 urlpatterns = [
     path("qna/", QnAview.as_view()),

@@ -25,7 +25,7 @@ class Question(models.Model):
 class Answer(models.Model):
     answer_id = models.AutoField(primary_key=True, db_column="answer_id")
     content = models.TextField()
-    question_id = models.OneToOneField(Question, on_delete=models.CASCADE)
+    question_id = models.OneToOneField(Question, on_delete=models.CASCADE, related_name="answer")
     recode_file = models.CharField(max_length=200)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(blank=True, null=True)
