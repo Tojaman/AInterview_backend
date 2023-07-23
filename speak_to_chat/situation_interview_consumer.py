@@ -16,7 +16,6 @@ import tempfile
 import base64
 
 from .tasks import process_whisper_data
-from .gpt_answer import add_gptanswer
 
 load_dotenv()
 openai.api_key = os.getenv("GPT_API_KEY")
@@ -29,13 +28,32 @@ class SituationInterviewConsumer(WebsocketConsumer):
         self.conversation = []
 
     def disconnect(self, close_code):
-        pass
+        
+
+        print(self.question_number) 
+        print(self.form_id)
+        form_object = Form.objects.get(id=self.form_id)
+        # 만약에 중간에 끊킨 경우, form_id와 관련된 것 전부 삭제
+        questions = Question.objects.filter(form_id=form_object)
+        question_numbers = questions.count()
+        print(question_numbers)
+        
+        if question_numbers != self.question_number:
+            Question.objects.filter(form_id=self.form_id).delete()
+        
+        for question in questions:
+            try:
+                answer = question.answer
+                print(answer)
+            except:
+                Question.objects.filter(form_id=self.form_id).delete() 
+
 
     def receive(self, text_data):
         data = json.loads(text_data)
 
-        print(data["formId"])
-        print(data["type"])
+        self.form_id = data["formId"]
+        self.question_number = data["questionNum"]
 
         # 오디오 파일이 없는 경우
         if data["type"] == "withoutAudio":
@@ -68,11 +86,11 @@ class SituationInterviewConsumer(WebsocketConsumer):
             transcription = process_whisper_data.delay(file_url, uid).get()
 
             # Question 테이블의 마지막 Row 가져오기
-            last_low = Question.objects.latest("question_id")
+            last_row = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
             Answer.objects.create(
-                content=transcription, question_id=last_low, recode_file=file_url
+                content=transcription, question_id=last_row, recode_file=file_url
             )
             answer_object = Answer.objects.latest("answer_id")
             print(transcription)
@@ -98,11 +116,7 @@ class SituationInterviewConsumer(WebsocketConsumer):
 
             self.continue_conversation(form_object)
 
-            #temp_file.close()
-
-            # 임시 파일 삭제
-            #os.unlink(temp_file_path)
-        else:
+        elif data["type"] == "noReply":
             # base64 디코딩
             audio_blob = data["audioBlob"]
             audio_data = base64.b64decode(audio_blob)
@@ -120,13 +134,15 @@ class SituationInterviewConsumer(WebsocketConsumer):
             transcription = process_whisper_data.delay(file_url, uid).get()
 
             # Question 테이블의 마지막 Row 가져오기
-            last_low = Question.objects.latest("question_id")
+            last_row = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
             Answer.objects.create(
-                content=transcription, question_id=last_low, recode_file=file_url
+                content=transcription, question_id=last_row, recode_file=file_url
             )
-            answer_object = Answer.objects.latest("answer_id")
+            
+        else:
+            self.question_number = data["questionNum"]
 
     def continue_conversation(self, form_object):
         messages = ""

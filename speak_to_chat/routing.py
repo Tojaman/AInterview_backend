@@ -8,5 +8,5 @@ websocket_urlpatterns = [
     re_path(r"ws/deep-interview/$", DeepInterviewConsumer.as_asgi()),
     re_path(r"ws/situation-interview/$", SituationInterviewConsumer.as_asgi()),
     re_path(r"ws/personality-interview/$", PersonalityInterviewConsumer.as_asgi()),
-    re_path(r"ws/default-interview/$", DeepInterviewConsumer.as_asgi()),
+    re_path(r"ws/default-interview/$", DefaultInterviewConsumer.as_asgi()),
 ]

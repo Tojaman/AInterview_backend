@@ -2,16 +2,18 @@ from channels.generic.websocket import WebsocketConsumer
 import openai
 from storage import get_file_url
 from dotenv import load_dotenv
+from storage import get_file_url
+import uuid
 import os
 import json
-from .models import Form, Question, Answer, GPTAnswer
+from .models import Question, Answer, GPTAnswer
+from forms.models import Form
 from asgiref.sync import sync_to_async
 from django.core.files.base import ContentFile
 import tempfile
 import base64
 
 from .tasks import process_whisper_data
-from .gpt_answer import add_gptanswer  # gpt_answer.py에서 add_gptanswer() 함수 불러옴
 
 load_dotenv()
 openai.api_key = os.getenv("GPT_API_KEY")
@@ -24,14 +26,35 @@ class DefaultInterviewConsumer(WebsocketConsumer):
         self.conversation = []
 
     def disconnect(self, close_code):
+        
+
+        print(self.question_number) 
+        print(self.form_id)
+        form_object = Form.objects.get(id=self.form_id)
+        # 만약에 중간에 끊킨 경우, form_id와 관련된 것 전부 삭제
+        questions = Question.objects.filter(form_id=form_object)
+        question_numbers = questions.count()
+        print(question_numbers)
+        
+        if question_numbers != self.question_number:
+            Question.objects.filter(form_id=self.form_id).delete()
+        
+        for question in questions:
+            try:
+                answer = question.answer
+                print(answer)
+            except:
+                Question.objects.filter(form_id=self.form_id).delete() 
         pass
 
+
     def receive(self, text_data):
-        # 클라이언트가 WebSocket을 통해 서버로 보낸 데이터를 JSON 형식으로 파싱하여 Python의 딕셔너리 형태로 변환하여 Python의 딕셔너리인 data에 저장
         data = json.loads(text_data)
 
-        print(data["formId"])
-        print(data["type"])
+        
+        self.form_id = data["formId"]
+        self.question_number = data["questionNum"]
+
 
         # 오디오 파일이 없는 경우
         if data["type"] == "withoutAudio":
@@ -62,10 +85,10 @@ class DefaultInterviewConsumer(WebsocketConsumer):
             transcription = process_whisper_data.delay(file_url, uid).get()
 
             # Question 테이블의 마지막 Row 가져오기
-            last_low = Question.objects.latest("question_id")
+            last_row = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
-            Answer.objects.create(content=transcription, question_id=last_low, recode_file=file_url)
+            Answer.objects.create(content=transcription, question_id=last_row, recode_file=file_url)
             answer_object = Answer.objects.latest("answer_id")
             print(transcription)
 
@@ -87,7 +110,8 @@ class DefaultInterviewConsumer(WebsocketConsumer):
             self.continue_conversation(form_object)
         
         # 대답만 추가하는 경우
-        else:
+        elif data["type"] == "noReply":
+            print("noReply")
             # base64 디코딩
             audio_blob = data["audioBlob"]
             audio_data = base64.b64decode(audio_blob)
@@ -105,12 +129,15 @@ class DefaultInterviewConsumer(WebsocketConsumer):
             transcription = process_whisper_data.delay(file_url, uid).get()
 
             # Question 테이블의 마지막 Row 가져오기
-            last_low = Question.objects.latest("question_id")
+            last_row = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
-            Answer.objects.create(content=transcription, question_id=last_low, recode_file=file_url)
-            answer_object = Answer.objects.latest("answer_id")
+            Answer.objects.create(content=transcription, question_id=last_row, recode_file=file_url)
+            self.send(json.dumps({"last_topic_answer":"last"}))
+            print("send Data")
 
+        else:
+            self.question_number = data["questionNum"]
 
     # 질문과 대답 추가
     def add_question_answer(self, question, answer):

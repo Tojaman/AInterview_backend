@@ -1,8 +1,6 @@
 import uuid
-
 from channels.generic.websocket import WebsocketConsumer
 import openai
-
 from storage import get_file_url
 from .models import Form
 from dotenv import load_dotenv
@@ -14,8 +12,9 @@ from django.core.files.base import ContentFile
 import tempfile
 import base64
 
+
 from .tasks import process_whisper_data
-from .gpt_answer import add_gptanswer
+
 
 load_dotenv()
 openai.api_key = os.getenv("GPT_API_KEY")
@@ -28,13 +27,31 @@ class DeepInterviewConsumer(WebsocketConsumer):
         self.conversation = []
 
     def disconnect(self, close_code):
-        pass
+        
+        print(self.question_number) 
+        print(self.form_id)
+        form_object = Form.objects.get(id=self.form_id)
+        # 만약에 중간에 끊킨 경우, form_id와 관련된 것 전부 삭제
+        questions = Question.objects.filter(form_id=form_object)
+        question_numbers = questions.count()
+        print(question_numbers)
+        
+        if question_numbers != self.question_number:
+            Question.objects.filter(form_id=self.form_id).delete()
+        
+        for question in questions:
+            try:
+                answer = question.answer
+                print(answer)
+            except:
+                Question.objects.filter(form_id=self.form_id).delete() 
+
 
     def receive(self, text_data):
         data = json.loads(text_data)
 
-        print(data["formId"])
-        print(data["type"])
+        self.form_id = data["formId"]
+        
 
         # 오디오 파일이 없는 경우
         if data["type"] == "withoutAudio":
@@ -68,16 +85,16 @@ class DeepInterviewConsumer(WebsocketConsumer):
             transcription = process_whisper_data.delay(file_url, uid).get()
 
             # Question 테이블의 마지막 Row 가져오기
-            last_low = Question.objects.latest("question_id")
+            last_row = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
-            Answer.objects.create(content=transcription, question_id=last_low, recode_file=file_url)
-            answer_object = Answer.objects.latest("answer_id")
+            Answer.objects.create(content=transcription, question_id=last_row, recode_file=file_url)
             print(transcription)
 
             # formId를 통해서 question 테이블을 가져옴
             form_object = Form.objects.get(id=data["formId"])
             questions = form_object.questions.all()
+            print(questions)
 
             self.default_tuning(
                 form_object.sector_name,
@@ -98,7 +115,7 @@ class DeepInterviewConsumer(WebsocketConsumer):
             self.continue_conversation(form_object)
 
         # 대답만 추가하는 경우
-        else:
+        elif data["type"] == "noReply":
             # base64 디코딩
             audio_blob = data["audioBlob"]
             audio_data = base64.b64decode(audio_blob)
@@ -116,11 +133,12 @@ class DeepInterviewConsumer(WebsocketConsumer):
             transcription = process_whisper_data.delay(file_url, uid).get()
             
             # Question 테이블의 마지막 Row 가져오기
-            last_low = Question.objects.latest("question_id")
+            last_row = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
-            Answer.objects.create(content=transcription, question_id=last_low, recode_file=file_url)
-            answer_object = Answer.objects.latest("answer_id")
+            Answer.objects.create(content=transcription, question_id=last_row, recode_file=file_url)
+        else:
+            self.question_number = data["questionNum"]
 
     # 질문과 대답 추가
     def add_question_answer(self, question, answer):
