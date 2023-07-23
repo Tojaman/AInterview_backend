@@ -112,48 +112,67 @@ class QnAview(APIView):
             return "파일을 불러올 수 없습니다."
 
 
-class GPTAnswerview(APIView):
+class GPTAnswerView(APIView):
+
+    # POST: GPT 답변 생성하기
     @swagger_auto_schema(
-        operation_description="지원 정보와 연결된 질문, 답변, GPT 답변 받기",
-            operation_id="질문, 답변, gpt답변 요청.",
-        manual_parameters=[
-            openapi.Parameter(
-                name="form_id",
-                in_=openapi.IN_QUERY,
-                type=openapi.TYPE_INTEGER,
-                required=True,
-                description="form_id",
-            )
-        ],
-        responses={"200": ResponseVoiceSerializer},
+        operation_description="GPT 답변 생성 및 저장",
+        operation_id="GPT 답변 생성 및 저장",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'question_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='question_id 입력'),
+            },
+        ),
+        responses={
+            201: openapi.Response(description="GPT 답변 생성 완료"),
+            400: "Bad request",
+        },
     )
-    def get(self, request):
-        form_id = request.GET.get("form_id")
-        # form Object 얻기
-        form_object = Form.objects.get(id=form_id)
+    def post(self, request, *args, **kwargs):
+        question_id = request.data.get("question_id")
+        question = get_object_or_404(Question, question_id=question_id)
 
-        # 특정 form과 연결된 Question 객체 리스트로 얻기
-        question_object = Question.objects.filter(form_id=form_object)
+        # generate_gpt_answer 메소드 불러오기
+        gpt_answer_content = self.generate_gpt_answer(question.content)
 
-        QnA = []
-        for i in range(0, len(question_object) - 1):  # ok
-            answer_object = Answer.objects.get(question_id=question_object[i])
-            gptanswer_object = GPTAnswer.objects.get(question_id=question_object[i])
+        # GPTAnswer 생성 후 저장
+        gpt_answer = GPTAnswer(content=gpt_answer_content, question_id=question)
+        gpt_answer.save()
 
-            # 질문, 답변 텍스트 가져오기
-            question_content = question_id = question_object[i].content
-            answer_content = answer_object.content
-            gpt_answer = gptanswer_object.content
+        return Response({"message": "GPT 답변 생성 완료"}, status=status.HTTP_201_CREATED)
 
-            QnA.append(
-                {
-                    "question": question_content,
-                    "answer": answer_content,
-                    "gptanswer": gpt_answer,
-                }
-            )
+    # GPT 답변 생성 메소드
+    def generate_gpt_answer(self, question_content):
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are an interviewee applying for the job. You must answer the given question just like an interviewee does. You must provide answer in Korean only."},
+                {"role": "user", "content": question_content},
+            ],
+        )
 
-        # QnA 리스트 JSON으로 변환
-        QnA = {"QnA": QnA}
+        gpt_answer_content = response['choices'][0]['message']['content']
 
-        return JsonResponse(QnA, status=status.HTTP_200_OK)
+        return gpt_answer_content
+
+
+    # GET: question_id에 해당하는 gpt_answer 불러오기
+    @swagger_auto_schema(
+        operation_description="질문에 해당되는 GPTAnswer 불러오기 (사전 생성 필수)",
+        operation_id="GPTAnswer 가져오기",
+        manual_parameters=[openapi.Parameter('question_id', openapi.IN_QUERY, description="ID of the question",
+                                             type=openapi.TYPE_INTEGER)],
+        responses={
+            200: openapi.Response(description="GPTAnswer 반환 성공"),
+            404: "question_id가 존재하지 않습니다.",
+        },
+    )
+    def get(self, request, *args, **kwargs):
+        question_id = request.query_params.get("question_id")
+        question = get_object_or_404(Question, question_id=question_id)
+
+        # question_id에 해당되는 gpt_answer 불러오기
+        gpt_answer = get_object_or_404(GPTAnswer, question_id=question)
+
+        return Response({"gpt_answer_content": gpt_answer.content}, status=status.HTTP_200_OK)
