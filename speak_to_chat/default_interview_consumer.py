@@ -1,9 +1,12 @@
 from channels.generic.websocket import WebsocketConsumer
 import openai
 from dotenv import load_dotenv
+from storage import get_file_url
+import uuid
 import os
 import json
-from .models import Form, Question, Answer, GPTAnswer
+from .models import Question, Answer, GPTAnswer
+from forms.models import Form
 from asgiref.sync import sync_to_async
 from django.core.files.base import ContentFile
 import tempfile
@@ -23,14 +26,35 @@ class DefaultInterviewConsumer(WebsocketConsumer):
         self.conversation = []
 
     def disconnect(self, close_code):
+        
+
+        print(self.question_number) 
+        print(self.form_id)
+        form_object = Form.objects.get(id=self.form_id)
+        # 만약에 중간에 끊킨 경우, form_id와 관련된 것 전부 삭제
+        questions = Question.objects.filter(form_id=form_object)
+        question_numbers = questions.count()
+        print(question_numbers)
+        
+        if question_numbers != self.question_number:
+            Question.objects.filter(form_id=self.form_id).delete()
+        
+        for question in questions:
+            try:
+                answer = question.answer
+                print(answer)
+            except:
+                Question.objects.filter(form_id=self.form_id).delete() 
         pass
 
+
     def receive(self, text_data):
-        # 클라이언트가 WebSocket을 통해 서버로 보낸 데이터를 JSON 형식으로 파싱하여 Python의 딕셔너리 형태로 변환하여 Python의 딕셔너리인 data에 저장
         data = json.loads(text_data)
 
-        print(data["formId"])
-        print(data["type"])
+        
+        self.form_id = data["formId"]
+        self.question_number = data["questionNum"]
+
 
         # 오디오 파일이 없는 경우
         if data["type"] == "withoutAudio":
@@ -50,6 +74,8 @@ class DefaultInterviewConsumer(WebsocketConsumer):
 
             # 오디오 파일로 변환
             audio_file = ContentFile(audio_data)
+            
+            file_url = get_file_url(audio_file, uuid)
 
             # tempfile : 임시 파일 생성하는 파이썬 라이브러리
             # NamedTemporaryFile() : 임시 파일 객체 반환
@@ -90,19 +116,19 @@ class DefaultInterviewConsumer(WebsocketConsumer):
                 error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
                 print(error_message)
 
-            # =========================gpt_answer===============================
-            # 질문, 답변 텍스트 가져오기
-            question = last_low.content
-            answer = answer_object.content
+            # # =========================gpt_answer===============================
+            # # 질문, 답변 텍스트 가져오기
+            # question = last_low.content
+            # answer = answer_object.content
 
-            # gpt 모범 답변 튜닝 및 생성
-            gpt_answer = add_gptanswer(question, answer)
+            # # gpt 모범 답변 튜닝 및 생성
+            # gpt_answer = add_gptanswer(question, answer)
 
-            # gpt 모범 답변 객체 생성
-            gpt_object = GPTAnswer.objects.create(
-                question_id=last_low, content=gpt_answer
-            )
-            # =========================gpt_answer===============================
+            # # gpt 모범 답변 객체 생성
+            # gpt_object = GPTAnswer.objects.create(
+            #     question_id=last_low, content=gpt_answer
+            # )
+            # # =========================gpt_answer===============================
 
             self.continue_conversation(form_object)
 
@@ -112,7 +138,8 @@ class DefaultInterviewConsumer(WebsocketConsumer):
             os.unlink(temp_file_path)
         
         # 대답만 추가하는 경우
-        else:
+        elif data["type"] == "noReply":
+            print("noReply")
             # base64 디코딩
             audio_blob = data["audioBlob"]
             audio_data = base64.b64decode(audio_blob)
@@ -141,20 +168,25 @@ class DefaultInterviewConsumer(WebsocketConsumer):
 
             # 답변 테이블에 추가
             Answer.objects.create(content=transcription, question_id=last_low, recode_file=file_url)
+            self.send(json.dumps({"last_topic_answer":"last"}))
+            print("send Data")
             
-            # =========================gpt_answer===============================
-            # 질문, 답변 텍스트 가져오기
-            question = last_low.content
-            answer = answer_object.content
+            # # =========================gpt_answer===============================
+            # # 질문, 답변 텍스트 가져오기
+            # question = last_low.content
+            # answer = answer_object.content
 
-            # gpt 모범 답변 튜닝 및 생성
-            gpt_answer = add_gptanswer(question, answer)
+            # # gpt 모범 답변 튜닝 및 생성
+            # gpt_answer = add_gptanswer(question, answer)
 
-            # gpt 모범 답변 객체 생성
-            gpt_object = GPTAnswer.objects.create(
-                question_id=last_low, content=gpt_answer
-            )
-            # =========================gpt_answer===============================
+            # # gpt 모범 답변 객체 생성
+            # gpt_object = GPTAnswer.objects.create(
+            #     question_id=last_low, content=gpt_answer
+            # )
+            # # =========================gpt_answer===============================
+        else:
+            self.question_number = data["questionNum"]
+
 
     # 질문과 대답 추가
     def add_question_answer(self, question, answer):
