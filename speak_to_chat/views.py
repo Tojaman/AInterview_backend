@@ -20,7 +20,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.decorators import action
 from drf_yasg import openapi
 from django.shortcuts import get_object_or_404
-from forms.models import Form
+
 from .models import Question
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -30,11 +30,10 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 
 from .tasks import process_whisper_data
-from ..ainterview.settings import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME
+from forms.models import Form
 
 load_dotenv()
 openai.api_key = os.getenv("GPT_API_KEY")
-
 
 # 특정 form의 질문, 답변, 음성파일 가져오기
 class QnAview(APIView):
@@ -91,13 +90,13 @@ class QnAview(APIView):
         # AWS SDK 클라이언트 생성:
         s3_client = boto3.client(
             's3',
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+            aws_access_key_id=os.environ.get("MY_AWS_ACCESS_KEY"),
+            aws_secret_access_key=os.environ.get("MY_AWS_SECRET_ACCESS_KEY"),
         )
 
         try:
             # 파일을 S3 버킷에서 가져오기
-            response = s3_client.get_object(Bucket=AWS_STORAGE_BUCKET_NAME, Key=file_key)
+            response = s3_client.get_object(Bucket=os.environ.get("AWS_STORAGE_BUCKET_NAME"), Key=file_key)
 
             # 파일 데이터 반환
             file_data = response['Body'].read()
