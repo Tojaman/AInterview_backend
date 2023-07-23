@@ -1,7 +1,11 @@
 import os
 import boto3
+from dotenv import load_dotenv
+
+
 
 def get_file_url(data, uuid):
+    load_dotenv()
     # AWS SDK 클라이언트 생성:
     s3_client = boto3.client(
         's3',
@@ -13,9 +17,8 @@ def get_file_url(data, uuid):
 
     # 파일을 S3 버킷에 업로드
     s3_client.put_object(Body=data, Bucket=os.environ.get("AWS_STORAGE_BUCKET_NAME"), Key=file_key)
-
     # 업로드된 파일의 URL을 구성
-    url = os.environ.get("FILE_URL")+"/"+ file_key
+    url = os.getenv("FILE_URL")+"/"+ file_key
 
     # URL 문자열에서 공백을 "_"로 대체
     url = url.replace(" ", "_")
