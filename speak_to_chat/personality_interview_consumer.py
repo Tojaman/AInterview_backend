@@ -92,7 +92,7 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
 
             # 답변 테이블에 추가
             Answer.objects.create(
-                content=transcription, question_id=last_low, recode_file=file_url
+                content=transcription, question_id=last_row, recode_file=file_url
             )
             print(transcription)
 
@@ -152,7 +152,7 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
 
             # 답변 테이블에 추가
             Answer.objects.create(
-                content=transcription, question_id=last_low, recode_file=file_url
+                content=transcription, question_id=last_row, recode_file=file_url
             )
 
     # 질문과 대답 추가

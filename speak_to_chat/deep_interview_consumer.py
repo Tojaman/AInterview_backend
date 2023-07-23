@@ -89,10 +89,10 @@ class DeepInterviewConsumer(WebsocketConsumer):
             transcription = transcript["text"]
 
             # Question 테이블의 마지막 Row 가져오기
-            question_last_row = Question.objects.latest("question_id")
+            last_row = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
-            Answer.objects.create(content=transcription, question_id=question_last_row, recode_file=file_url)
+            Answer.objects.create(content=transcription, question_id=last_row, recode_file=file_url)
             print(transcription)
 
             # formId를 통해서 question 테이블을 가져옴
@@ -148,10 +148,10 @@ class DeepInterviewConsumer(WebsocketConsumer):
             transcription = transcript["text"]
 
             # Question 테이블의 마지막 Row 가져오기
-            question_last_row = Question.objects.latest("question_id")
+            last_row = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
-            Answer.objects.create(content=transcription, question_id=last_low, recode_file=file_url)
+            Answer.objects.create(content=transcription, question_id=last_row, recode_file=file_url)
         else:
             self.question_number = data["questionNum"]
 

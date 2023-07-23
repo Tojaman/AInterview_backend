@@ -152,10 +152,10 @@ class DefaultInterviewConsumer(WebsocketConsumer):
             last_row = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
-            Answer.objects.create(content=transcription, question_id=last_low, recode_file=file_url)
+            Answer.objects.create(content=transcription, question_id=last_row, recode_file=file_url)
             self.send(json.dumps({"last_topic_answer":"last"}))
             print("send Data")
-            
+
         else:
             self.question_number = data["questionNum"]
 
