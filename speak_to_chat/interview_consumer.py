@@ -23,7 +23,7 @@ class InterviewConsumer(WebsocketConsumer):
         # 대화 기록을 저장할 리스트
         self.conversation = []
 
-    def disconnect(self, close_code):
+    def disconnect(self, closed_code):
         form_object = Form.objects.get(id=self.form_id)
         # 만약에 중간에 끊킨 경우, form_id와 관련된 것 전부 삭제
         questions = Question.objects.filter(form_id=form_object)
@@ -43,6 +43,7 @@ class InterviewConsumer(WebsocketConsumer):
 
     def receive(self, text_data):
         data = json.loads(text_data)
+        
 
         # 초기 질문 갯수 세팅
         if data["type"] == "initialSetting":
@@ -54,9 +55,9 @@ class InterviewConsumer(WebsocketConsumer):
             self.personality_question_num = data["personalityQuestionNum"]
             self.form_id = data["formId"]
         else:
-            self.is_done = False
+            self.interview_type = data["interviewType"]
             # 기본 면접인 경우
-            if self.default_question_num != 0 and self.is_done == False:
+            if self.interview_type == "default":
                 print("기본 면접의 경우")
                 # 기본 면접 튜닝
                 self.default_interview_tuning()
@@ -67,9 +68,6 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 대화 계속하기
                     self.continue_conversation(form_object)
-                    
-                    # 질문 갯수 감소
-                    self.default_question_num -= 1
 
                 # 오디오 파일이 있는 경우
                 elif data["type"] == "withAudio":
@@ -125,8 +123,6 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 임시 파일 삭제
                     os.unlink(temp_file_path)
-                    
-                    self.default_question_num -= 1
                 
                 # 대답만 추가하는 경우
                 elif data["type"] == "noReply":
@@ -160,13 +156,12 @@ class InterviewConsumer(WebsocketConsumer):
                     # 답변 테이블에 추가
                     Answer.objects.create(content=transcription, question_id=last_row, recode_file=file_url)
                     self.send(json.dumps({"last_topic_answer":"default_last"}))
-                    
-                    self.default_question_num -= 1     
+
             else:
                 pass
 
             # 상황 면접인 경우
-            if self.situation_question_num != 0 and self.is_done == False:
+            if self.interview_type == "situation":
                 print("상황 면접의 경우")
                 # 오디오 파일이 없는 경우
                 if data["type"] == "withoutAudio":
@@ -181,8 +176,7 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 대화 계속하기
                     self.continue_conversation(form_object)
-                    
-                    self.situation_question_num -= 1
+
                 elif data["type"] == "withAudio":
                     # # base64 디코딩
                     audio_blob = data["audioBlob"]
@@ -241,7 +235,6 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 임시 파일 삭제
                     os.unlink(temp_file_path)
-                    self.situation_question_num -= 1
                     
                 elif data["type"] == "noReply":
                     # base64 디코딩
@@ -275,12 +268,12 @@ class InterviewConsumer(WebsocketConsumer):
                         content=transcription, question_id=last_row, recode_file=file_url
                     )
                     self.send(json.dumps({"last_topic_answer":"situation_last"}))
-                    self.situation_question_num -= 1
+
             else:
                 pass
               
             # 심층 면접인 경우
-            if self.deep_question_num != 0 and self.is_done == False:
+            if self.interview_type == "deep":
                 print("심층 면접의 경우")
                 # 오디오 파일이 없는 경우
                 if data["type"] == "withoutAudio":
@@ -296,9 +289,7 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 대화 계속하기
                     self.continue_conversation(form_object)
-                    
-                    self.deep_question_num -= 1
-                    
+                                        
                 elif data["type"] == "withAudio":
                     # base64 디코딩
                     audio_blob = data["audioBlob"]
@@ -333,7 +324,6 @@ class InterviewConsumer(WebsocketConsumer):
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
                     questions = form_object.questions.all()
-                    print(questions)
 
                     self.deep_interview_tuning(
                         form_object.sector_name,
@@ -357,7 +347,7 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 임시 파일 삭제
                     os.unlink(temp_file_path)
-                    self.deep_question_num -= 1
+                    
                 # 대답만 추가하는 경우
                 elif data["type"] == "noReply":
                     # base64 디코딩
@@ -389,12 +379,12 @@ class InterviewConsumer(WebsocketConsumer):
                     # 답변 테이블에 추가
                     Answer.objects.create(content=transcription, question_id=last_row, recode_file=file_url)
                     self.send(json.dumps({"last_topic_answer":"deep_last"})) 
-                    self.deep_question_num -= 1
+
             else:
                 pass 
                               
             # 성향 면접인 경우
-            if self.personality_question_num != 0 and self.is_done == False:
+            if self.interview_type == "personality":
                 print("성향 면접의 경우")
                 # 오디오 파일이 없는 경우
                 if data["type"] == "withoutAudio":
@@ -410,7 +400,6 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 대화 계속하기
                     self.continue_conversation(form_object)
-                    self.personality_question_num -= 1
                     
                 elif data["type"] == "withAudio":
                     # base64 디코딩
@@ -471,9 +460,7 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 임시 파일 삭제
                     os.unlink(temp_file_path)
-                    
-                    self.personality_question_num -= 1
-                    
+                                        
                 # 대답만 추가하는 경우
                 elif data["type"] == "noReply":
                     # base64 디코딩
@@ -507,10 +494,19 @@ class InterviewConsumer(WebsocketConsumer):
                         content=transcription, question_id=last_row, recode_file=file_url
                     )
                     self.send(json.dumps({"last_topic_answer":"personal_last"}))
-                    self.personality_question_num -= 1
             else:
                 pass
-
+            
+        
+        form_object = Form.objects.get(id=self.form_id)
+        questions = Question.objects.filter(form_id=form_object)
+        last_question = questions.last()
+        
+        try:
+            if (last_question.answer and self.question_number == questions.count()):
+                self.send(json.dumps({"last_topic_answer":"last"}))
+        except:
+            pass
         
 
     # 질문과 대답 추가
@@ -540,7 +536,6 @@ class InterviewConsumer(WebsocketConsumer):
             self.send(json.dumps({"message": message, "finish_reason": finish_reason}))
 
         Question.objects.create(content=messages, form_id=form_object)
-        self.is_done = True
 
     # 기본 면접 튜닝
     def default_interview_tuning(self):
