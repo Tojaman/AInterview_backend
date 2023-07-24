@@ -498,15 +498,15 @@ class InterviewConsumer(WebsocketConsumer):
                 pass
             
         
-        form_object = Form.objects.get(id=self.form_id)
-        questions = Question.objects.filter(form_id=form_object)
-        last_question = questions.last()
-        
-        try:
-            if (last_question.answer and self.question_number == questions.count()):
-                self.send(json.dumps({"last_topic_answer":"last"}))
-        except:
-            pass
+            form_object = Form.objects.get(id=self.form_id)
+            questions = Question.objects.filter(form_id=form_object)
+            last_question = questions.last()
+            
+            try:
+                if (last_question.answer and self.question_number == questions.count()):
+                    self.send(json.dumps({"last_topic_answer":"last"}))
+            except:
+                pass
         
 
     # 질문과 대답 추가
