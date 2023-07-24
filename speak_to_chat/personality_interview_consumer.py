@@ -32,9 +32,9 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
         # 만약에 중간에 끊킨 경우, form_id와 관련된 것 전부 삭제
         form_object = Form.objects.get(id=self.form_id)
         questions = Question.objects.filter(form_id=form_object)
-        question_numbers = questions.count()
+        question_count = questions.count()
         
-        if question_numbers != self.question_number:
+        if question_count != self.question_number:
             Question.objects.filter(form_id=self.form_id).delete()
         
         for question in questions:
@@ -59,7 +59,7 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
             self.default_tuning(
                 form_object.sector_name,
                 form_object.job_name,
-                form_object.career,
+                form_object.career, 
                 form_object.resume,
             )
 
@@ -72,22 +72,19 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
 
             # 오디오 파일로 변환
             audio_file = ContentFile(audio_data)
-
-            # 오디오 파일 이름 설정
-            uid = str(uuid.uuid4())
             
             # s3에 파일 업로드 및 URL 받아오기
-            file_url = get_file_url(audio_file, uid)
+            audio_file_url = get_file_url(audio_file)
 
             # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
-            transcription = process_whisper_data.delay(file_url, uid).get()
+            transcription = process_whisper_data.delay(audio_file_url).get()
 
             # Question 테이블의 마지막 Row 가져오기
-            last_row = Question.objects.latest("question_id")
+            last_question = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
             Answer.objects.create(
-                content=transcription, question_id=last_row, recode_file=file_url
+                content=transcription, question_id=last_question, recode_file=audio_file_url
             )
             answer_object = Answer.objects.latest("answer_id")
             
@@ -123,22 +120,19 @@ class PersonalityInterviewConsumer(WebsocketConsumer):
 
             # 오디오 파일로 변환
             audio_file = ContentFile(audio_data)
-            
-            # 오디오 파일 이름 설정
-            uid = str(uuid.uuid4())
 
             # 파일 업로드 및 URL 받아오기
-            file_url = get_file_url(audio_file, uid)
+            audio_file_url = get_file_url(audio_file)
 
             # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
-            transcription = process_whisper_data.delay(file_url, uid).get()
+            transcription = process_whisper_data.delay(audio_file_url).get()
 
             # Question 테이블의 마지막 Row 가져오기
-            last_row = Question.objects.latest("question_id")
+            last_question = Question.objects.latest("question_id")
 
             # 답변 테이블에 추가
             Answer.objects.create(
-                content=transcription, question_id=last_row, recode_file=file_url
+                content=transcription, question_id=last_question, recode_file=audio_file_url
             )
 
     # 질문과 대답 추가
