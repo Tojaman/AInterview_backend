@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv
 import boto3
 import tempfile
+from urllib.parse import urlparse
 
 load_dotenv()
 openAI_Api_key = os.environ.get('GPT_API_KEY')
@@ -47,5 +48,10 @@ def process_whisper_data(audio_file_url):
         with open(temp_file_path, "rb") as temp_file:
                 transcript = openai.Audio.transcribe("whisper-1", temp_file)
         transcription = transcript['text']
+        
+        temp_file.close()
+
+        # 임시 파일 삭제
+        os.unlink(temp_file_path)
         
         return transcription
