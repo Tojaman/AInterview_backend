@@ -1,6 +1,6 @@
 from channels.generic.websocket import WebsocketConsumer
 import openai
-from storage import get_audio_file_url
+from storage import get_file_url
 from .models import Form
 from dotenv import load_dotenv
 import os
@@ -86,7 +86,7 @@ class InterviewConsumer(WebsocketConsumer):
                     # 오디오 파일로 변환
                     audio_file = ContentFile(audio_data)
                     
-                    audio_file_url = get_audio_file_url(audio_file)
+                    audio_file_url = get_file_url("audio", audio_file)
 
                     # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
                     transcription = process_whisper_data.delay(audio_file_url).get()
@@ -136,7 +136,7 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file = ContentFile(audio_data)
 
                     # 파일 업로드 및 URL 받아오기
-                    audio_file_url = get_audio_file_url(audio_file)
+                    audio_file_url = get_file_url("audio", audio_file)
 
                     # celery에 s3_url 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
                     transcription = process_whisper_data.delay(audio_file_url).get()
@@ -177,7 +177,7 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file = ContentFile(audio_data)
 
                     # 파일 업로드 및 URL 받아오기
-                    audio_file_url = get_audio_file_url(audio_file)
+                    audio_file_url = get_file_url("audio", audio_file)
 
                     # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
                     transcription = process_whisper_data.delay(audio_file_url).get()
@@ -222,7 +222,7 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file = ContentFile(audio_data)
 
                     # 파일 업로드 및 URL 받아오기
-                    audio_file_url = get_audio_file_url(audio_file)
+                    audio_file_url = get_file_url("audio", audio_file)
 
                     # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
                     transcription = process_whisper_data.delay(audio_file_url).get()
@@ -266,7 +266,7 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file = ContentFile(audio_data)
 
                     # 파일 업로드 및 URL 받아오기
-                    audio_file_url=get_audio_file_url(audio_file)
+                    audio_file_url=get_file_url("audio", audio_file)
 
                     # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
                     transcription = process_whisper_data.delay(audio_file_url).get()
@@ -311,7 +311,7 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file = ContentFile(audio_data)
 
                     # 파일 업로드 및 URL 받아오기
-                    audio_file_url = get_audio_file_url(audio_file)
+                    audio_file_url = get_file_url("audio", audio_file)
 
                     # celery에 s3_url 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
                     transcription = process_whisper_data.delay(audio_file_url).get()
@@ -353,7 +353,7 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file = ContentFile(audio_data)
 
                     # 파일 업로드 및 URL 받아오기
-                    audio_file_url = get_audio_file_url(audio_file)
+                    audio_file_url = get_file_url("audio", audio_file)
 
                     # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
                     transcription = process_whisper_data.delay(audio_file_url).get()
@@ -399,7 +399,7 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file = ContentFile(audio_data)
 
                     # 파일 업로드 및 URL 받아오기
-                    audio_file_url = get_audio_file_url(audio_file)
+                    audio_file_url = get_file_url("audio", audio_file)
 
                     # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
                     transcription = process_whisper_data.delay(audio_file_url).get()

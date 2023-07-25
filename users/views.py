@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from drf_yasg import openapi
-from storage import get_image_file_url
+from storage import get_file_url
 
 
 from .serializers import RegisterSerializer, LoginSerializer, RefreshTokenSerializer
@@ -160,7 +160,7 @@ class UploadProfilePictureView(APIView):
         user = User.objects.get(id=user_info)
         
         # s3에 파일 업로드 후 url 반환
-        image_file_url = get_image_file_url(image_file)
+        image_file_url = get_file_url("image", image_file)
         
         # 사용자의 profile_picture 필드에 프로필 사진 url 삽입 및 저장
         user.profile_picture = image_file_url
