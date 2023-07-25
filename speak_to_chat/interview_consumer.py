@@ -1,4 +1,3 @@
-import uuid
 from channels.generic.websocket import WebsocketConsumer
 import openai
 from storage import get_file_url
@@ -11,6 +10,7 @@ from asgiref.sync import sync_to_async
 from django.core.files.base import ContentFile
 import tempfile
 import base64
+from .tasks import process_whisper_data
 
 
 load_dotenv()
@@ -78,30 +78,16 @@ class InterviewConsumer(WebsocketConsumer):
                     # 오디오 파일로 변환
                     audio_file = ContentFile(audio_data)
                     
-                    file_url = get_file_url(audio_file, uuid)
+                    audio_file_url = get_file_url(audio_file)
 
-                    # tempfile : 임시 파일 생성하는 파이썬 라이브러리
-                    # NamedTemporaryFile() : 임시 파일 객체 반환
-                    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-                    temp_file_path = temp_file.name
-
-                    with open(temp_file_path, "wb") as file:
-                        # audio_file을 chunks() 메서드를 통해 블록 단위로 데이터를 읽어와서 file(temp_file_path)에 기록
-                        for chunk in audio_file.chunks():
-                            file.write(chunk)
-
-                    # 블록 단위의 음성 파일을 저장하고 있는 temp_file_path을 whisper API로 텍스트로 변환
-                    with open(temp_file_path, "rb") as audio_file:
-                        transcript = openai.Audio.transcribe("whisper-1", audio_file)
-
-                    transcription = transcript["text"]
+                    # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
+                    transcription = process_whisper_data.delay(audio_file_url).get()
 
                     # Question 테이블의 마지막 Row 가져오기
-                    last_row = Question.objects.latest("question_id")
+                    last_question = Question.objects.latest("question_id")
 
                     # 답변 테이블에 추가
-                    Answer.objects.create(content=transcription, question_id=last_row, recode_file=file_url)
-                    answer_object = Answer.objects.latest("answer_id")
+                    Answer.objects.create(content=transcription, question_id=last_question, recode_file=audio_file_url)
                     print(transcription)
 
                     # formId를 통해서 question 테이블을 가져옴
@@ -119,10 +105,6 @@ class InterviewConsumer(WebsocketConsumer):
 
                     self.continue_conversation(form_object)
 
-                    temp_file.close()
-
-                    # 임시 파일 삭제
-                    os.unlink(temp_file_path)
                 
                 # 대답만 추가하는 경우
                 elif data["type"] == "noReply":
@@ -135,26 +117,16 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file = ContentFile(audio_data)
 
                     # 파일 업로드 및 URL 받아오기
-                    file_url = get_file_url(audio_file, uuid)
+                    audio_file_url = get_file_url(audio_file)
 
-                    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-                    temp_file_path = temp_file.name
-
-                    with open(temp_file_path, "wb") as file:
-                        for chunk in audio_file.chunks():
-                            file.write(chunk)
-
-                    # 텍스트 파일로 변환
-                    with open(temp_file_path, "rb") as audio_file:
-                        transcript = openai.Audio.transcribe("whisper-1", audio_file)
-
-                    transcription = transcript["text"]
+                    # celery에 s3_url 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
+                    transcription = process_whisper_data.delay(audio_file_url).get()
 
                     # Question 테이블의 마지막 Row 가져오기
-                    last_row = Question.objects.latest("question_id")
+                    last_question = Question.objects.latest("question_id")
 
                     # 답변 테이블에 추가
-                    Answer.objects.create(content=transcription, question_id=last_row, recode_file=file_url)
+                    Answer.objects.create(content=transcription, question_id=last_question, recode_file=audio_file_url)
                     self.send(json.dumps({"last_topic_answer":"default_last"}))
 
             else:
@@ -186,27 +158,17 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file = ContentFile(audio_data)
 
                     # 파일 업로드 및 URL 받아오기
-                    file_url = get_file_url(audio_file, uuid)
+                    audio_file_url = get_file_url(audio_file)
 
-                    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-                    temp_file_path = temp_file.name
-
-                    with open(temp_file_path, "wb") as file:
-                        for chunk in audio_file.chunks():
-                            file.write(chunk)
-
-                    # 텍스트 파일로 변환
-                    with open(temp_file_path, "rb") as audio_file:
-                        transcript = openai.Audio.transcribe("whisper-1", audio_file)
-
-                    transcription = transcript["text"]
+                    # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
+                    transcription = process_whisper_data.delay(audio_file_url).get()
 
                     # Question 테이블의 마지막 Row 가져오기
-                    last_row = Question.objects.latest("question_id")
+                    last_question = Question.objects.latest("question_id")
 
                     # 답변 테이블에 추가
                     Answer.objects.create(
-                        content=transcription, question_id=last_row, recode_file=file_url
+                        content=transcription, question_id=last_question, recode_file=audio_file_url
                     )
                     print(transcription)
 
@@ -231,10 +193,6 @@ class InterviewConsumer(WebsocketConsumer):
 
                     self.continue_conversation(form_object)
 
-                    temp_file.close()
-
-                    # 임시 파일 삭제
-                    os.unlink(temp_file_path)
                     
                 elif data["type"] == "noReply":
                     # base64 디코딩
@@ -245,27 +203,17 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file = ContentFile(audio_data)
 
                     # 파일 업로드 및 URL 받아오기
-                    file_url = get_file_url(audio_file, uuid)
+                    audio_file_url = get_file_url(audio_file)
 
-                    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-                    temp_file_path = temp_file.name
-
-                    with open(temp_file_path, "wb") as file:
-                        for chunk in audio_file.chunks():
-                            file.write(chunk)
-
-                    # 텍스트 파일로 변환
-                    with open(temp_file_path, "rb") as audio_file:
-                        transcript = openai.Audio.transcribe("whisper-1", audio_file)
-
-                    transcription = transcript["text"]
+                    # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
+                    transcription = process_whisper_data.delay(audio_file_url).get()
 
                     # Question 테이블의 마지막 Row 가져오기
-                    last_row = Question.objects.latest("question_id")
+                    last_question = Question.objects.latest("question_id")
 
                     # 답변 테이블에 추가
                     Answer.objects.create(
-                        content=transcription, question_id=last_row, recode_file=file_url
+                        content=transcription, question_id=last_question, recode_file=audio_file_url
                     )
                     self.send(json.dumps({"last_topic_answer":"situation_last"}))
 
@@ -299,26 +247,16 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file = ContentFile(audio_data)
 
                     # 파일 업로드 및 URL 받아오기
-                    file_url=get_file_url(audio_file, uuid)
+                    audio_file_url=get_file_url(audio_file)
 
-                    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-                    temp_file_path = temp_file.name
-
-                    with open(temp_file_path, "wb") as file:
-                        for chunk in audio_file.chunks():
-                            file.write(chunk)
-
-                    # 텍스트 파일로 변환
-                    with open(temp_file_path, "rb") as audio_file:
-                        transcript = openai.Audio.transcribe("whisper-1", audio_file)
-
-                    transcription = transcript["text"]
+                    # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
+                    transcription = process_whisper_data.delay(audio_file_url).get()
 
                     # Question 테이블의 마지막 Row 가져오기
-                    last_row = Question.objects.latest("question_id")
+                    last_question = Question.objects.latest("question_id")
 
                     # 답변 테이블에 추가
-                    Answer.objects.create(content=transcription, question_id=last_row, recode_file=file_url)
+                    Answer.objects.create(content=transcription, question_id=last_question, recode_file=audio_file_url)
                     print(transcription)
 
                     # formId를 통해서 question 테이블을 가져옴
@@ -343,11 +281,7 @@ class InterviewConsumer(WebsocketConsumer):
 
                     self.continue_conversation(form_object)
 
-                    temp_file.close()
 
-                    # 임시 파일 삭제
-                    os.unlink(temp_file_path)
-                    
                 # 대답만 추가하는 경우
                 elif data["type"] == "noReply":
                     # base64 디코딩
@@ -358,31 +292,21 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file = ContentFile(audio_data)
 
                     # 파일 업로드 및 URL 받아오기
-                    file_url = get_file_url(audio_file, uuid)
+                    audio_file_url = get_file_url(audio_file)
 
-                    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-                    temp_file_path = temp_file.name
-
-                    with open(temp_file_path, "wb") as file:
-                        for chunk in audio_file.chunks():
-                            file.write(chunk)
-
-                    # 텍스트 파일로 변환
-                    with open(temp_file_path, "rb") as audio_file:
-                        transcript = openai.Audio.transcribe("whisper-1", audio_file)
-
-                    transcription = transcript["text"]
+                    # celery에 s3_url 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
+                    transcription = process_whisper_data.delay(audio_file_url).get()
 
                     # Question 테이블의 마지막 Row 가져오기
-                    last_row = Question.objects.latest("question_id")
+                    last_question = Question.objects.latest("question_id")
 
                     # 답변 테이블에 추가
-                    Answer.objects.create(content=transcription, question_id=last_row, recode_file=file_url)
+                    Answer.objects.create(content=transcription, question_id=last_question, recode_file=audio_file_url)
                     self.send(json.dumps({"last_topic_answer":"deep_last"})) 
 
             else:
                 pass 
-                              
+
             # 성향 면접인 경우
             if self.interview_type == "personality":
                 print("성향 면접의 경우")
@@ -410,27 +334,17 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file = ContentFile(audio_data)
 
                     # 파일 업로드 및 URL 받아오기
-                    file_url = get_file_url(audio_file, uuid)
+                    audio_file_url = get_file_url(audio_file)
 
-                    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-                    temp_file_path = temp_file.name
-
-                    with open(temp_file_path, "wb") as file:
-                        for chunk in audio_file.chunks():
-                            file.write(chunk)
-
-                    # 텍스트 파일로 변환
-                    with open(temp_file_path, "rb") as audio_file:
-                        transcript = openai.Audio.transcribe("whisper-1", audio_file)
-
-                    transcription = transcript["text"]
+                    # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
+                    transcription = process_whisper_data.delay(audio_file_url).get()
 
                     # Question 테이블의 마지막 Row 가져오기
-                    last_row = Question.objects.latest("question_id")
+                    last_question = Question.objects.latest("question_id")
 
                     # 답변 테이블에 추가
                     Answer.objects.create(
-                        content=transcription, question_id=last_row, recode_file=file_url
+                        content=transcription, question_id=last_question, recode_file=audio_file_url
                     )
                     print(transcription)
 
@@ -456,11 +370,6 @@ class InterviewConsumer(WebsocketConsumer):
 
                     self.continue_conversation(form_object)
 
-                    temp_file.close()
-
-                    # 임시 파일 삭제
-                    os.unlink(temp_file_path)
-                                        
                 # 대답만 추가하는 경우
                 elif data["type"] == "noReply":
                     # base64 디코딩
@@ -471,27 +380,17 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file = ContentFile(audio_data)
 
                     # 파일 업로드 및 URL 받아오기
-                    file_url = get_file_url(audio_file, uuid)
+                    audio_file_url = get_file_url(audio_file)
 
-                    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-                    temp_file_path = temp_file.name
-
-                    with open(temp_file_path, "wb") as file:
-                        for chunk in audio_file.chunks():
-                            file.write(chunk)
-
-                    # 텍스트 파일로 변환
-                    with open(temp_file_path, "rb") as audio_file:
-                        transcript = openai.Audio.transcribe("whisper-1", audio_file)
-
-                    transcription = transcript["text"]
+                    # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
+                    transcription = process_whisper_data.delay(audio_file_url).get()
 
                     # Question 테이블의 마지막 Row 가져오기
-                    last_row = Question.objects.latest("question_id")
+                    last_question = Question.objects.latest("question_id")
 
                     # 답변 테이블에 추가
                     Answer.objects.create(
-                        content=transcription, question_id=last_row, recode_file=file_url
+                        content=transcription, question_id=last_question, recode_file=audio_file_url
                     )
                     self.send(json.dumps({"last_topic_answer":"personal_last"}))
             else:
