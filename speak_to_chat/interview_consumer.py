@@ -11,6 +11,8 @@ from django.core.files.base import ContentFile
 import tempfile
 import base64
 from .tasks import process_whisper_data
+import random
+import time
 
 
 load_dotenv()
@@ -60,14 +62,20 @@ class InterviewConsumer(WebsocketConsumer):
             if self.interview_type == "default":
                 print("기본 면접의 경우")
                 # 기본 면접 튜닝
-                self.default_interview_tuning()
+                #self.default_interview_tuning()
                 
                 # 오디오 파일이 없는 경우
                 if data["type"] == "withoutAudio":
                     form_object = Form.objects.get(id=data["formId"])
 
                     # 대화 계속하기
-                    self.continue_conversation(form_object)
+                    # self.continue_conversation(form_object)
+                    
+                    # 가장 처음 할 질문
+                    first_question = "1분 자기소개를 해주세요."
+                    
+                    # 최초 기본 면접 질문
+                    self.default_conversation(form_object, first_question)
 
                 # 오디오 파일이 있는 경우
                 elif data["type"] == "withAudio":
@@ -94,17 +102,28 @@ class InterviewConsumer(WebsocketConsumer):
                     form_object = Form.objects.get(id=data["formId"])
                     questions = form_object.questions.all()
 
-                    # question 테이블에서 질문과 답변에 대해 튜닝 과정에 추가함.
-                    try:
-                        for question in questions:
-                            answer = question.answer
-                            self.add_question_answer(question.content, answer.content)
-                    except:
-                        error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
-                        print(error_message)
-
-                    self.continue_conversation(form_object)
-
+                    print(questions)
+                    
+                    # 이미 위에서 답변 테이블에 답변을 추가했는데 아래 검증 과정이 필요한가?
+                    # 어차피 중간에 나가면 모든 데이터를 지우기 때문에 필요 없을 것 같아아
+                    # for question in questions:
+                    #     if question.answer is None:
+                    #         error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
+                    #         print(error_message)
+                    
+                    # try:
+                    #     for question in questions:
+                    #         answer = question.answer
+                    #         self.add_question_answer(question.content, answer.content)
+                    # except:
+                    #     error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
+                    #     print(error_message)
+                    
+                    # 랜덤으로 질문 뽑기
+                    pick_question = self.pick_random_question()
+                    
+                    # 뽑은 질문을 client에게 보내기
+                    self.default_conversation(form_object, pick_question)
                 
                 # 대답만 추가하는 경우
                 elif data["type"] == "noReply":
@@ -435,32 +454,65 @@ class InterviewConsumer(WebsocketConsumer):
             self.send(json.dumps({"message": message, "finish_reason": finish_reason}))
 
         Question.objects.create(content=messages, form_id=form_object)
+    
+    # 기본 면접 한글자 단위로 보내기
+    def default_conversation(self, form_object, question_content):
+        messages = ""
+        # question_content의 index와 원소를 순차적으로 반환하여 스트림 형식으로 출력
+        for index, chunk in enumerate(question_content):
+            is_last_char = ""
+            # 현재 글자가 마지막 글자인지 확인
+            if index == len(question_content) - 1:
+                is_last_char = "stop"
+            else:
+                is_last_char = "incomplete"
+                
+            if is_last_char == "stop" :
+                self.send(json.dumps({"message": chunk, "finish_reason": is_last_char}))
+                break
+            
+            message = chunk
+            messages += message
 
-    # 기본 면접 튜닝
-    def default_interview_tuning(self):
-        
-        self.conversation = []
-        # 대화 시작 메시지 추가
-        self.conversation.append(
-            {
-                "role": "user",
-                "content": 'function_name: [basic_interview] input: ["number_of_questions"] rule: [I want you to act as a interviewer, asking basic questions for the interviewee.\
-                        Ask me the number of "number_of_questions".\
-                        Your task is to simply make common basic questions and provide questions to me.\
-                        Do not ask me questions about jobs.\
-                        Do not ask the same question or similar question more than once\
-                        You should create total of "number_of_questions" amount of questions, and provide it once at a time.\
-                        You should ask the next question only after I have answered to the question.\
-                        Do not include any explanations or additional information in your response, simply provide the generated question.\
-                        You should also provide only one question at a time.\
-                        As shown in the example below, please ask basic questions in all fields regardless of occupation or job.\
-                        Do not ask questions related to my answer, ask me a separate basic question like the example below\
-                        Example questions would be questions such as "What motivated you to apply for our company?", "Talk about your strengths and weaknesses."\
-                        Keep in mind that these are the basic questions that you ask in an interview regardless of your occupation\
-                        Let me know this is the last question.\
-                        You must speak only in Korean during the interview.] personality_interview("1")',
-            }
-        )
+            # 메시지를 클라이언트로 바로 전송
+            self.send(json.dumps({"message": message, "finish_reason": is_last_char}))
+            
+            time.sleep(0.05)
+
+        Question.objects.create(content=messages, form_id=form_object)
+
+
+    # 질문을 랜덤으로 뽑는 함수
+    def pick_random_question(self):
+        # 중복 질문이 나오면 다시 뽑음 (그냥 삭제하는 걸로 할까?)
+        pick_question = []
+        while True:
+            basic_questions_list = [
+                "우리 회사에 지원한 동기가 무엇입니까?",
+                "자신의 장점과 단점에 대해 이야기해보세요.",
+                "최근에 읽은 책이나 영화는 무엇입니까?",
+                "본인의 취미나 특기가 무엇입니까?",
+                "자신만에 스트레스 해소법은 무엇입니까?",
+                "5년 뒤, 10년 뒤 자신의 모습이 어떨 것 같습니까?",
+                "가장 존경하는 인물은 누구입니까?",
+                "본인이 추구하는 가치나 생활신조, 인생관, 좌우명은 무엇입니까?",
+                "자기 계발을 위해 무엇을 합니까?",
+                "취업기간에 무엇을 하셨나요?",
+                "가장 기억에 남는 갈등 경험을 말해주세요",
+                "가장 필요한 역량은 무엇이라 생각하나요?",
+                "우리 회사의 단점이 무엇이라고 생각하나요?",
+                "성취를 이룬 경험이 있나요? 그 경험을 설명해주세요.",
+                "과거에 어떤 도전적인 상황을 겪었으며, 그 상황에서 어떻게 대응했나요?",
+                ]
+
+            question = random.choice(basic_questions_list)
+
+            if question in pick_question:
+                continue
+            pick_question.append(question)
+            break
+
+        return question
         
     # 상황 면접 튜닝
     def situation_interview_tuning(self, selector_name, job_name, career):
