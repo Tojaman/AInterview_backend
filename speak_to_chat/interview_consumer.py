@@ -193,7 +193,6 @@ class InterviewConsumer(WebsocketConsumer):
 
                     self.continue_conversation(form_object)
 
-
                     
                 elif data["type"] == "noReply":
                     # base64 디코딩
