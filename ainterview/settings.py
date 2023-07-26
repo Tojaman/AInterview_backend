@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "django_celery_beat",
     "django_celery_results",
     #"django_prometheus",
+
     "forms",
     "users",
     "speak_to_chat",
@@ -76,7 +77,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "corsheaders.middleware.CorsMiddleware",
-    #"django_prometheus.middleware.PrometheusAfterMiddleware",
+    # "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 
