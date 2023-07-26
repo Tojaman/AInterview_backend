@@ -7,14 +7,15 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404, redirect, render
 from drf_yasg.utils import swagger_auto_schema
-from forms.serializers import FormsSerializer, FormCreateSerializer, FormsPutSerializer
-from forms.models import Form
+from forms.serializers import FormsSerializer, FormCreateSerializer, FormsPutSerializer, QesNumSerializer
+from forms.models import Form, Qes_Num
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 
 from users.models import User
+
 
 # Create your views here.
 
@@ -87,6 +88,28 @@ class FormsUserView(APIView):
     def put(self, request, pk):
         info = get_object_or_404(Form, pk=pk)
         serializer = FormsSerializer(info, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=200)
+        return Response(serializer.errors, status=404)
+
+class QesNumView(APIView):
+    @swagger_auto_schema(
+        operation_id="질문 개수 요청",
+    )
+    def get(self, request, qesnum_id):
+        qes_num = get_object_or_404(Qes_Num, qesnum_id=qesnum_id)
+        serializer = QesNumSerializer(qes_num)
+        return Response(serializer.data)
+
+class QesNumPostView(APIView):
+    @swagger_auto_schema(
+        request_body=QesNumSerializer,
+        operation_id="질문 개수 저장",
+    )
+    def post(self, request):
+        # form_id = request.data.get("form_id")
+        serializer = QesNumSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=200)

@@ -14,6 +14,7 @@ from .tasks import process_whisper_data
 import random
 import time
 
+from forms.models import Qes_Num
 
 load_dotenv()
 openai.api_key = os.getenv("GPT_API_KEY")
@@ -60,6 +61,15 @@ class InterviewConsumer(WebsocketConsumer):
             form_object = Form.objects.get(id=data["formId"])
             questions = form_object.questions.all()
             self.before_qes = questions.count()
+
+            Qes_Num.objects.create(
+                total_que_num=self.question_number,
+                default_que_num=self.default_question_num,
+                situation_que_num=self.situation_question_num,
+                deep_que_num=self.deep_question_num,
+                personality_que_num=self.personality_question_num,
+                form_id=form_object,
+            )
 
         else:
             self.interview_type = data["interviewType"]
