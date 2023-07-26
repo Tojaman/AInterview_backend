@@ -20,6 +20,7 @@ openai.api_key = os.getenv("GPT_API_KEY")
 
 
 class InterviewConsumer(WebsocketConsumer):
+
     def connect(self):
         self.accept()
         # 대화 기록을 저장할 리스트
@@ -42,10 +43,8 @@ class InterviewConsumer(WebsocketConsumer):
                 Question.objects.filter(form_id=self.form_id).delete() 
         pass
 
-
     def receive(self, text_data):
         data = json.loads(text_data)
-        
 
         # 초기 질문 갯수 세팅
         if data["type"] == "initialSetting":
@@ -56,14 +55,22 @@ class InterviewConsumer(WebsocketConsumer):
             self.deep_question_num = data["deepQuestionNum"]
             self.personality_question_num = data["personalityQuestionNum"]
             self.form_id = data["formId"]
+
+            # 이전 면접에서 저장되었던 질문 수
+            form_object = Form.objects.get(id=data["formId"])
+            questions = form_object.questions.all()
+            self.before_qes = questions.count()
+
         else:
             self.interview_type = data["interviewType"]
+
             # 기본 면접인 경우
             if self.interview_type == "default":
                 print("기본 면접의 경우")
+
                 # 기본 면접 튜닝
                 #self.default_interview_tuning()
-                
+
                 # 오디오 파일이 없는 경우
                 if data["type"] == "withoutAudio":
                     form_object = Form.objects.get(id=data["formId"])
@@ -79,6 +86,7 @@ class InterviewConsumer(WebsocketConsumer):
 
                 # 오디오 파일이 있는 경우
                 elif data["type"] == "withAudio":
+
                     # base64 디코딩
                     audio_blob = data["audioBlob"]
                     audio_data = base64.b64decode(audio_blob)
@@ -100,34 +108,36 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
-                    questions = form_object.questions.all()
+                    questions = form_object.questions.all().order_by('question_id')
 
-                    print(questions)
-                    
-                    # 이미 위에서 답변 테이블에 답변을 추가했는데 아래 검증 과정이 필요한가?
-                    # 어차피 중간에 나가면 모든 데이터를 지우기 때문에 필요 없을 것 같아아
-                    # for question in questions:
-                    #     if question.answer is None:
-                    #         error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
-                    #         print(error_message)
-                    
-                    # try:
-                    #     for question in questions:
-                    #         answer = question.answer
-                    #         self.add_question_answer(question.content, answer.content)
-                    # except:
-                    #     error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
-                    #     print(error_message)
+                    # 기존 questions 데이터를 슬라이싱하여 새롭게 생성된 questions만 가져옴
+                    questions_included = questions[self.before_qes:]
+                    #print(questions_included)
+
+                    for question in questions_included:
+                        if question.answer is None:
+                            error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
+                            print(error_message)
+
+                    try:
+                        for question in questions_included:
+                            answer = question.answer
+                            self.add_question_answer(question.content, answer.content)
+                    except:
+                        error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
+                        print(error_message)
                     
                     # 랜덤으로 질문 뽑기
                     pick_question = self.pick_random_question()
                     
                     # 뽑은 질문을 client에게 보내기
                     self.default_conversation(form_object, pick_question)
+
                 
                 # 대답만 추가하는 경우
                 elif data["type"] == "noReply":
                     print("noReply")
+
                     # base64 디코딩
                     audio_blob = data["audioBlob"]
                     audio_data = base64.b64decode(audio_blob)
@@ -148,12 +158,16 @@ class InterviewConsumer(WebsocketConsumer):
                     Answer.objects.create(content=transcription, question_id=last_question, recode_file=audio_file_url)
                     self.send(json.dumps({"last_topic_answer":"default_last"}))
 
+                    # 이전 질문 개수에 기본면접 질문 개수 더하여 저장
+                    self.before_qes += self.default_question_num
+
             else:
                 pass
 
             # 상황 면접인 경우
             if self.interview_type == "situation":
                 print("상황 면접의 경우")
+
                 # 오디오 파일이 없는 경우
                 if data["type"] == "withoutAudio":
                     form_object = Form.objects.get(id=data["formId"])
@@ -193,7 +207,11 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
-                    questions = form_object.questions.all()
+                    questions = form_object.questions.all().order_by('question_id')
+
+                    # 기존 questions 데이터를 슬라이싱하여 새롭게 생성된 questions만 가져옴
+                    questions_included = questions[self.before_qes:]
+                    # print(questions_included)
 
                     self.situation_interview_tuning(
                         form_object.sector_name,
@@ -203,7 +221,7 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # question 테이블에서 질문과 답변에 대해 튜닝 과정에 추가함.
                     try:
-                        for question in questions:
+                        for question in questions_included:
                             answer = question.answer
                             self.add_question_answer(question.content, answer.content)
                     except:
@@ -235,6 +253,9 @@ class InterviewConsumer(WebsocketConsumer):
                         content=transcription, question_id=last_question, recode_file=audio_file_url
                     )
                     self.send(json.dumps({"last_topic_answer":"situation_last"}))
+
+                    # 이전 질문 개수에 상황면접 질문 개수 누적
+                    self.before_qes += self.situation_question_num
 
             else:
                 pass
@@ -280,7 +301,11 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
-                    questions = form_object.questions.all()
+                    questions = form_object.questions.all().order_by('question_id')
+
+                    # 기존 questions 데이터를 슬라이싱하여 새롭게 생성된 questions만 가져옴
+                    questions_included = questions[self.before_qes:]
+                    # print(questions_included)
 
                     self.deep_interview_tuning(
                         form_object.sector_name,
@@ -291,7 +316,7 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # question 테이블에서 질문과 답변에 대해 튜닝 과정에 추가함.
                     try:
-                        for question in questions:
+                        for question in questions_included:
                             answer = question.answer
                             self.add_question_answer(question.content, answer.content)
                     except:
@@ -321,7 +346,10 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 답변 테이블에 추가
                     Answer.objects.create(content=transcription, question_id=last_question, recode_file=audio_file_url)
-                    self.send(json.dumps({"last_topic_answer":"deep_last"})) 
+                    self.send(json.dumps({"last_topic_answer":"deep_last"}))
+
+                    # 이전 질문 개수에 심층면접 질문 개수 누적
+                    self.before_qes += self.deep_question_num
 
             else:
                 pass 
@@ -369,7 +397,11 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
-                    questions = form_object.questions.all()
+                    questions = form_object.questions.all().order_by('question_id')
+
+                    # 기존 questions 데이터를 슬라이싱하여 새롭게 생성된 questions만 가져옴
+                    questions_included = questions[self.before_qes:]
+                    # print(questions_included)
 
                     self.personal_interview_tuning(
                         form_object.sector_name,
@@ -380,7 +412,7 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # question 테이블에서 질문과 답변에 대해 튜닝 과정에 추가함.
                     try:
-                        for question in questions:
+                        for question in questions_included:
                             answer = question.answer
                             self.add_question_answer(question.content, answer.content)
                     except:
@@ -412,6 +444,9 @@ class InterviewConsumer(WebsocketConsumer):
                         content=transcription, question_id=last_question, recode_file=audio_file_url
                     )
                     self.send(json.dumps({"last_topic_answer":"personal_last"}))
+
+                    # 이전 질문 개수에 성향면접 질문 개수 누적
+                    self.before_qes += self.personality_question_num
             else:
                 pass
             
