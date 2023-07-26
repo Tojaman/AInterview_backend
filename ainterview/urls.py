@@ -35,6 +35,7 @@ urlpatterns = [
     # prometheus metrics at localhost:8000/metrics
     #path("", include("django_prometheus.urls")),
 
+
     path("admin/", admin.site.urls),
     path("api/", include("speak_to_chat.urls")),
 ]

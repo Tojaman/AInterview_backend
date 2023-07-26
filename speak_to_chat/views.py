@@ -64,6 +64,8 @@ class QnAview(APIView):
 
         QnA = []
         for i in range(0, len(question_object) - 1):  # ok
+            question_id = question_object[i].question_id
+
             answer_object = Answer.objects.get(question_id=question_object[i])  # ok
 
             # 질문, 답변내용, 음성파일 가져오기
@@ -74,7 +76,7 @@ class QnAview(APIView):
             #s3로부터 음성파일 받아오기
             record_data = self.get_record(audio_file_url)
 
-            QnA.append({"question": question, "answer": answer, "record": record_data})
+            QnA.append({"question_id": question_id, "question": question, "answer": answer, "record": record_data})
 
         # QnA 리스트 JSON으로 변환
         QnA = {"QnA": QnA}
