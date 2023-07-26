@@ -81,4 +81,5 @@ wcwidth==0.2.6
 yarl==1.9.2
 zope.interface==6.0
 django-storages==1.13.2
-django-prometheus
+#django-prometheus
+
