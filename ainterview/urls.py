@@ -33,7 +33,7 @@ urlpatterns = [
         r"redoc", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc-v1"
     ),
     # prometheus metrics at localhost:8000/metrics
-    path("", include("django_prometheus.urls")),
+    # path("", include("django_prometheus.urls")),
 
 
     path("admin/", admin.site.urls),

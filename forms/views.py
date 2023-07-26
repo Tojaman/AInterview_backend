@@ -32,15 +32,15 @@ class FormsAllView(APIView):
         type=openapi.TYPE_STRING,
     )
 
-    # 사용자 지원정보 전체조회
     @swagger_auto_schema(
         manual_parameters=[parameter_token],
         operation_id="사용자의 지원정보 전체조회"
     )
-    def get(self, request):
-        data = Form.objects.all()
+    def get(self, request, user_id):
+        data = Form.objects.filter(user_id=user_id)
         serializer = FormsSerializer(data, many=True)
         return Response(serializer.data, status=200)
+
 
     # 지원정보 추가
     @swagger_auto_schema(
