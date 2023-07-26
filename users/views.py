@@ -52,8 +52,7 @@ class LoginView(generics.GenericAPIView):
 
         # refresh token, access token
         return Response({
-            # uncomment below code to also return user information, else just remove
-            # "user": UserSerializer(user, context=self.get_serializer_context()).data
+            'user_id': user.id,
             'refresh': str(refresh),
             'access': str(refresh.access_token),
         })
