@@ -63,7 +63,7 @@ class QnAview(APIView):
         question_object = Question.objects.filter(form_id=form_object)
 
         QnA = []
-        for i in range(0, len(question_object) - 1):  # ok
+        for i in range(0, len(question_object)):  # ok
             question_id = question_object[i].question_id
 
             answer_object = Answer.objects.get(question_id=question_object[i])  # ok
