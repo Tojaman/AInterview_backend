@@ -48,7 +48,7 @@ class FormsAllView(APIView):
         manual_parameters=[parameter_token],
         operation_id="사용자 지원정보 추가",
     )
-    def post(self, request):
+    def post(self, request, user_id):
         try:
             user = self.request.user  # JWTAuthentication을 통해 인증된 사용자 인스턴스를 가져옴
         except AuthenticationFailed:
