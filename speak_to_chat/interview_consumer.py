@@ -152,6 +152,7 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # celery에 s3_url 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
                     transcription = process_whisper_data.delay(audio_file_url).get()
+                    print(transcription)
 
                     # Question 테이블의 마지막 Row 가져오기
                     last_question = Question.objects.latest("question_id")
@@ -363,12 +364,7 @@ class InterviewConsumer(WebsocketConsumer):
                     form_object = Form.objects.get(id=data["formId"])
 
                     # 기본 튜닝
-                    self.personal_interview_tuning(
-                        form_object.sector_name,
-                        form_object.job_name,
-                        form_object.career,
-                        form_object.resume,
-                    )
+                    self.personal_interview_tuning()
 
                     # 대화 계속하기
                     self.continue_conversation(form_object)
@@ -404,12 +400,7 @@ class InterviewConsumer(WebsocketConsumer):
                     questions_included = questions[self.before_qes:]
                     # print(questions_included)
 
-                    self.personal_interview_tuning(
-                        form_object.sector_name,
-                        form_object.job_name,
-                        form_object.career,
-                        form_object.resume,
-                    )
+                    self.personal_interview_tuning()
 
                     # question 테이블에서 질문과 답변에 대해 튜닝 과정에 추가함.
                     try:
@@ -561,21 +552,19 @@ class InterviewConsumer(WebsocketConsumer):
                     Exemplary Questions1. (What would you do if your boss gives an unfair work order?)\
                     Exemplary Questions2. If the workload is too heavy and challenging, or if the tasks don't align with your skills, what would you do?\
                     Exemplary Questions3. In a project with you and two other team members, one person is trying to freeload. How would you handle this situation?\
-                    While working on the final report for a team project, you discover a minor error that only you noticed. Fixing the error might cause you to miss the deadline. What would you do?\
+                    4. While working on the final report for a team project, you discover a minor error that only you noticed. Fixing the error might cause you to miss the deadline. What would you do?\
 
-                    Ask questions about how to handle specific situations, similar to the example questions provided.\
                     You should create total of "number_of_questions" amount of questions, and provide it once at a time.\
-                    You should ask the next question only after I have answered to the question.\
                     Do not include any explanations or additional information in your response, simply provide the generated question.\
+                    You should ask the next question only after I have answered to the question.\
                     You should also provide only one question at a time.\
+                    Generate an answer similar to the content given next time.\
                     You must speak only in Korean during the interview.'''
         
         self.conversation = []
         self.conversation.append(
             {
                 "role": "system",
-                "content": 
-                "role": "user",
                 "content": (
                     # 'function_name: [situation_interview] input: ["sector", "job", "career"] rule: [Ask me questions in a tail-to-tail manner about what I answer. There may be technical questions about the answer, and there may be questions that you, as an interviewer, would dig into the answer. For example, if the question asks, "What would you do if your boss gives an unfair work order?" the answer is, "I refuse because I can\'t do anything unfair." So the new question is, "If you refuse at once, it can damage the entire organization, but do you mean that you put the individual before the organization as a whole?" It should be the same question. If you don\'t have any more questions, move on to the next topic. And you will play the role of an unfriendly and demanding interviewer. You have to constantly induce the interviewee to make mistakes. The first goal is to challenge the interviewee and see how well they handle specific situations. Second, it aims to test the interviewee\'s ability and agility to respond to repeated or intended questions.]'
                     # 'function_name: [situation_interview] input: ["sector", "job", "career"] rule: [From now on, you are acting as a job interviewer. I will provide you with input forms including "sector", "job", "career", and "number_of_questions". I have given inputs, but you do not have to refer to those. You should create total of "number_of_questions" amount of questions, and provide it once at a time. I\'ll give you an example of a question and answer, so please create a question similar to the example question. Generate only one question at a time and don\'t give an evaluation or your opinion other than the question. For example, if the question asks, "What would you do if your boss gives an unfair work order?" the answer is, "I refuse because I can\'t do anything unfair." So the new question is, "If you refuse at once, it can damage the entire organization, but do you mean that you put the individual before the organization as a whole?" It should be the same question. Put the applicant\'s answer and ask up to 3 questions that bite the tail of the falling tail. If you don\'t have any more questions, move on to the next topic. Ask questions about the applicant\'s ability to cope with the situation]'
@@ -591,18 +580,12 @@ class InterviewConsumer(WebsocketConsumer):
                     # + 'function_name: [no_same_question] rule: [Never ask the same question before.]'
                     # + 'function_name: [tail_to_tail] rule: [Put the applicant\'s answer and ask up to 3 questions that bite the tail of the falling tail.]'
                     # + 'function_name: [speak_korean] rule: [You must speak only in Korean during the interview.]'
-                    
-                    
-                    # + 'no_additional_info()'
-                    # + 'no_answer()'
-                    # + 'one_question()'
-                    # + 'qna()'
-                    # + 'no_same_question()'
-                    # + 'tail_to_tail()'
-                    # + 'speak_korean()'
-                    
                 ),
                 
+            }, 
+            {
+                "role": "assistance",
+                "content":
             }
         )
                 # "content": 'function_name: [situation_interview] input: ["sector", "job", "career"] rule: [You are an expert in recruitment and interviewer specializing in finding the best talent. Ask questions that can judge my ability to cope with situations based “job”  and ask one question at a time. For example,let\'s say company = IT company, job = web front-end developer, career = newcomer. Then you can recognize that I am a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information. Such as "You have been assigned to work on a project where the design team has provided you with a visually appealing but intricate UI design for a web page. As you start implementing it, you realize that some of the design elements may not be feasible to achieve with the current technology or may negatively impact the performance. How would you handle this situation?". Do not ask this example question.]'
@@ -664,18 +647,15 @@ class InterviewConsumer(WebsocketConsumer):
         ]
         
         
-    def personal_interview_tuning(self, selector_name, job_name, career, resume):
+    def personal_interview_tuning(self):
         self.conversation = [
             {
+                "role": "system",
+                "content": "You are a strict interviewer. You will ask the user personality interview questions commonly asked in job interviews. You shouldn't make any unnecessary expressions aside from asking questions."
+            },
+
+            {
                 "role": "user",
-                "content": 'function_name: [personality_interview] input: ["sector", "job", "career", "resume", "number_of_questions"] rule: [I want you to act as a strict interviewer, asking personality questions for the interviewee. I will provide you with input forms including "sector", "job", "career", "resume", and "number_of_questions". I have given inputs, but you do not have to refer to those. Your task is to simply make common personality questions and provide questions to me. You should create total of "number_of_questions" amount of questions, and provide it once at a time. You should ask the next question only after I have answered to the question. Do not include any explanations or additional information in your response, simply provide the generated question. You should also provide only one question at a time. Example questions would be questions such as "How do you handle stress and pressure?", "If you could change one thing about your personality, what would it be and why?". Remember, these questions are related to personality. Once all questions are done, you should just say "수고하셨습니다." You must speak only in Korean during the interview.] personality_interview('
-                + str(selector_name)
-                + ", "
-                + str(job_name)
-                + ", "
-                + str(career)
-                + ", "
-                + str(resume)
-                + ", 3)",
+                "content": 'I want you to give personality questions for the interviewee. Your task is to simply ask common personality questions that interviewers ask in job interviews. You should only focus on providing questions, and not say any unnecessary expressions. Provide only one question at a time. Do not ever to not include any explanations or additional information in your response. Simply provide the generated question please. Remember to only provide questions that are related to personality. You must speak only in Korean during the interview. Keep in mind - Don\'t ask the interviewee to introduce himself. Don\'t even greet the interviewee. Just ask interview questions, one at a time.'
             }
         ]
