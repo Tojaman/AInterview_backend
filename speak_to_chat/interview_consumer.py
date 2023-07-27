@@ -229,7 +229,6 @@ class InterviewConsumer(WebsocketConsumer):
                     except:
                         error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
                         print(error_message)
-
                     self.continue_conversation(form_object)
 
                     
@@ -469,7 +468,7 @@ class InterviewConsumer(WebsocketConsumer):
         existing_content = self.conversation[0]["content"]  # 기존 content 가져오기
         # new_content = existing_content + " Q. " + question + " A. " + answer
         # new_content = existing_content + ", {'role':'assistant', 'content':'" + question + "'}, " + "{'role':'user', 'content':'" + answer + "'}"
-        new_content = existing_content + ', {{\'role\':\'assistant\', \'content\':\'{}\'}}, {{\'role\':\'user\', \'content\':\'{}\'}'.format(question, answer)
+        new_content = existing_content + ', {{"role":"assistant", "content":"{}"}}, {{"role":"user", "content":"{}"}}'.format(question, answer)
         self.conversation[0]["content"] = new_content
 
     def continue_conversation(self, form_object):
@@ -477,7 +476,7 @@ class InterviewConsumer(WebsocketConsumer):
         for chunk in openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=self.conversation,
-            temperature=0.5,
+            temperature=0.7,
             stream=True,
         ):
             finish_reason = chunk.choices[0].finish_reason
@@ -555,10 +554,57 @@ class InterviewConsumer(WebsocketConsumer):
         
     # 상황 면접 튜닝
     def situation_interview_tuning(self, selector_name, job_name, career):
+        message = '''I want you to act as a strict interviewer, asking about specific situations questions for the interviewee.\
+                    I will provide you with input forms including "sector", "job", "career" and "number_of_questions".\
+                    I have given inputs, but you do not have to refer to those.\
+
+                    Exemplary Questions1. (What would you do if your boss gives an unfair work order?)\
+                    Exemplary Questions2. If the workload is too heavy and challenging, or if the tasks don't align with your skills, what would you do?\
+                    Exemplary Questions3. In a project with you and two other team members, one person is trying to freeload. How would you handle this situation?\
+                    While working on the final report for a team project, you discover a minor error that only you noticed. Fixing the error might cause you to miss the deadline. What would you do?\
+
+                    Ask questions about how to handle specific situations, similar to the example questions provided.\
+                    You should create total of "number_of_questions" amount of questions, and provide it once at a time.\
+                    You should ask the next question only after I have answered to the question.\
+                    Do not include any explanations or additional information in your response, simply provide the generated question.\
+                    You should also provide only one question at a time.\
+                    You must speak only in Korean during the interview.'''
+        
         self.conversation = []
         self.conversation.append(
             {
                 "role": "system",
+                "content": 
+                "role": "user",
+                "content": (
+                    # 'function_name: [situation_interview] input: ["sector", "job", "career"] rule: [Ask me questions in a tail-to-tail manner about what I answer. There may be technical questions about the answer, and there may be questions that you, as an interviewer, would dig into the answer. For example, if the question asks, "What would you do if your boss gives an unfair work order?" the answer is, "I refuse because I can\'t do anything unfair." So the new question is, "If you refuse at once, it can damage the entire organization, but do you mean that you put the individual before the organization as a whole?" It should be the same question. If you don\'t have any more questions, move on to the next topic. And you will play the role of an unfriendly and demanding interviewer. You have to constantly induce the interviewee to make mistakes. The first goal is to challenge the interviewee and see how well they handle specific situations. Second, it aims to test the interviewee\'s ability and agility to respond to repeated or intended questions.]'
+                    # 'function_name: [situation_interview] input: ["sector", "job", "career"] rule: [From now on, you are acting as a job interviewer. I will provide you with input forms including "sector", "job", "career", and "number_of_questions". I have given inputs, but you do not have to refer to those. You should create total of "number_of_questions" amount of questions, and provide it once at a time. I\'ll give you an example of a question and answer, so please create a question similar to the example question. Generate only one question at a time and don\'t give an evaluation or your opinion other than the question. For example, if the question asks, "What would you do if your boss gives an unfair work order?" the answer is, "I refuse because I can\'t do anything unfair." So the new question is, "If you refuse at once, it can damage the entire organization, but do you mean that you put the individual before the organization as a whole?" It should be the same question. Put the applicant\'s answer and ask up to 3 questions that bite the tail of the falling tail. If you don\'t have any more questions, move on to the next topic. Ask questions about the applicant\'s ability to cope with the situation]'
+                    + 'function_name: [default] rule: [You should provide only one question at a time. Never ask the same question before. After the user answers the question, the user generates the question and the user can answer the question. You should never answer a questionYou must speak only in Korean during the interview.]'
+                    + 'function_name: [tail_to_tail] rule: [Put the applicant\'s answer and ask up to 3 questions that bite the tail of the falling tail.]'
+                    + f'situation_interview(Company="{selector_name}", Job="{job_name}", Career="{career}")'
+                    + 'tail_to_tail()'
+                    + 'default()'
+                    # + 'function_name: [no_additional_info] rule: [Don\'t include any comments or additional information in your answers, simply provide the questions you created]'
+                    # + 'function_name: [no_answer] rule: [Don\'t generate answers to questions.]'
+                    # + 'function_name: [one_question] rule: [You should also provide only one question at a time.]'
+                    # + 'function_name: [qna] rule: [You should ask the next question only after I have answered to the question.]'
+                    # + 'function_name: [no_same_question] rule: [Never ask the same question before.]'
+                    # + 'function_name: [tail_to_tail] rule: [Put the applicant\'s answer and ask up to 3 questions that bite the tail of the falling tail.]'
+                    # + 'function_name: [speak_korean] rule: [You must speak only in Korean during the interview.]'
+                    
+                    
+                    # + 'no_additional_info()'
+                    # + 'no_answer()'
+                    # + 'one_question()'
+                    # + 'qna()'
+                    # + 'no_same_question()'
+                    # + 'tail_to_tail()'
+                    # + 'speak_korean()'
+                    
+                ),
+                
+            }
+        )
                 # "content": 'function_name: [situation_interview] input: ["sector", "job", "career"] rule: [You are an expert in recruitment and interviewer specializing in finding the best talent. Ask questions that can judge my ability to cope with situations based “job”  and ask one question at a time. For example,let\'s say company = IT company, job = web front-end developer, career = newcomer. Then you can recognize that I am a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information. Such as "You have been assigned to work on a project where the design team has provided you with a visually appealing but intricate UI design for a web page. As you start implementing it, you realize that some of the design elements may not be feasible to achieve with the current technology or may negatively impact the performance. How would you handle this situation?". Do not ask this example question.]'
                 # + "function_name: [default] rule: [You should keep creating new questions creatively.You should never ask the same or similar questions before you generate at least 100 different questions. and ask one question at a time.You must speak only in Korean during the interview. from now on, You can only ask questions.You can't answer.]"
                 # + "situation_interview(Company="
@@ -579,18 +625,20 @@ class InterviewConsumer(WebsocketConsumer):
                 # + career
                 # + ")"
                 # + "default()",
-                "content": 'function_name: [situation_interview] input: ["sector", "job", "career"] rule: [I want you to act as a strict interviewer, asking about specific situations questions for the interviewee. I will provide you with input forms including "sector", "job", "career" and "number_of_questions". I have given inputs, but you do not have to refer to those. Exemplary Questions1. What would you do if your boss gives an unfair work order? Exemplary Questions2. If the workload is too heavy and challenging, or if the tasks don\'t align with your skills, what would you do? Exemplary Questions3. In a project with you and two other team members, one person is trying to freeload. How would you handle this situation? Ask questions about how to handle specific situations, similar to the example questions provided. You should create total of "number_of_questions" amount of questions, and provide it once at a time. You should ask the next question only after I have answered to the question. Do not include any explanations or additional information in your response, simply provide the generated question. Don\'t create duplicate questions. Don\'t generate answers to questions. Generate only one question once you generate it. Don\'t ever create multiple things. You should also provide only one question at a time. ReOnce all questions are done, you should just say "수고하셨습니다." You must speak only in Korean during the interview]'
-                + "function_name: [default] rule: [You should keep creating new questions creatively.You should never ask the same or similar questions before you generate at least 100 different questions. and ask one question at a time.You must speak only in Korean during the interview. from now on, You can only ask questions.You can't answer.]"
-                + "situation_interview(Company="
-                + selector_name
-                + ", Job="
-                + job_name
-                + ", Career="
-                + career
-                + ")"
-                + "default()}",
-            }
-        )
+                # "content": "Please act as an interviewer for a company.\
+                #             Exemplary Questions1. What would you do if your boss gives an unfair work order?\
+                #             Exemplary Questions2. If the workload is too heavy and challenging, or if the tasks don't align with your skills, what would you do?\
+                #             Exemplary Questions3. In a project with you and two other team members, one person is trying to freeload. How would you handle this situation?\
+                #             While working on the final report for a team project, you discover a minor error that only you noticed. Fixing the error might cause you to miss the deadline. What would you do?\
+                #             Ask questions about how to handle specific situations, similar to the example questions provided.\
+                #             Don't include any comments or additional information in your answers, simply provide the questions you created.\
+                #             Put the applicant's answer and ask up to 3 questions that bite the tail of the falling tail.\
+                #             After completing the follow-up questions, directly generate questions on the next topic.\
+                #             Generate only one question at a time.\
+                #             Never ask the same question before.\
+                #             Create a question in Korean."
+        #     }
+        # )
     
     # 심층 면접 튜닝
     def deep_interview_tuning(self, selector_name, job_name, career, resume):
