@@ -557,16 +557,10 @@ class InterviewConsumer(WebsocketConsumer):
         self.conversation.append(
             {
                 "role": "user",
-                "content": 'function_name: [situation_interview] input: ["sector", "job", "career"] rule: [You are an expert in recruitment and interviewer specializing in finding the best talent. Ask questions that can judge my ability to cope with situations based “job”  and ask one question at a time. For example,let\'s say company = IT company, job = web front-end developer, career = newcomer. Then you can recognize that I am a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information. Such as "You have been assigned to work on a project where the design team has provided you with a visually appealing but intricate UI design for a web page. As you start implementing it, you realize that some of the design elements may not be feasible to achieve with the current technology or may negatively impact the performance. How would you handle this situation?". Do not ask this example question.]'
-                + "function_name: [default] rule: [You should keep creating new questions creatively.You should never ask the same or similar questions before you generate at least 100 different questions. and ask one question at a time.You must speak only in Korean during the interview. from now on, You can only ask questions.You can't answer.]"
-                + "situation_interview(Company="
-                + selector_name
-                + ", Job="
-                + job_name
-                + ", Career="
-                + career
-                + ")"
-                + "default()",
+                "content":'function_name: [situation_interview] input: ["sector", "job", "career"] rule: [I want you to act as a strict interviewer. Ask questions that can judge my ability to cope with situations. and ask one question at a time. For example, let\'s say company = IT company, job = web front-end developer, career = newcomer. Then you can recognize that I am a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information. Such as "You have been assigned to work on a project where the design team has provided you with a visually appealing but intricate UI design for a web page. As you start implementing it, you realize that some of the design elements may not be feasible to achieve with the current technology or may negatively impact the performance. How would you handle this situation?". Or “ If the workload is too heavy and challenging, or if the tasks don\'t align with your skills, what would you do?” Like the example, create at least one situation-specific interview question related to the job I delivered. and a general and witty situation-specific interview question, and ask questions evenly.]'
+                + "function_name: [default] rule: [You should keep creating new questions creatively. You should not ask the same or similar questions as the previous interview questions you asked.   and ask one question at a time. You must speak only in Korean during the interview. From now on, you are the interviewer. You can only ask me questions. You must not say anything other than questions.]"
+                + f'situation_interview(Company="{selector_name}", Job="{job_name}", Career="{career}")'
+                + f'default()',
             }
         )
     
