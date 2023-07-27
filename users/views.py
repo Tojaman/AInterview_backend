@@ -80,6 +80,9 @@ class DeleteUserView(generics.DestroyAPIView):
     queryset = User.objects.all()
     lookup_field = 'id'
 
+    @swagger_auto_schema(
+        operation_id="회원 탈퇴",
+    )
     def delete(self, request, *args, **kwargs):
         user = self.get_object()
         user.delete()
@@ -94,7 +97,7 @@ class UploadProfilePictureView(APIView):
     @swagger_auto_schema(
         # API 작업에 대한 설명
         operation_description="프로필 사진 GET",
-        operation_id="User pk를 입력해주세요.",
+        operation_id="프로필 사진 가져오기",
         manual_parameters=[
             openapi.Parameter(
                 name="pk", # 파일의 이름
@@ -136,7 +139,7 @@ class UploadProfilePictureView(APIView):
     @swagger_auto_schema(
         # API 작업에 대한 설명
         operation_description="프로필 사진 POST",
-        operation_id="이미지를 업로드 해주세요",
+        operation_id="프로필 사진 업로드",
         # request_body=None,
         manual_parameters=[image_param, email_param],
         responses={400: "업로드에 실패했습니다.", 200: "성공적으로 업로드되었습니다."}
