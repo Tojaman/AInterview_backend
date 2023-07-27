@@ -48,7 +48,7 @@ class FormsAllView(APIView):
         manual_parameters=[parameter_token],
         operation_id="사용자 지원정보 추가",
     )
-    def post(self, request):
+    def post(self, request, user_id):
         try:
             user = self.request.user  # JWTAuthentication을 통해 인증된 사용자 인스턴스를 가져옴
         except AuthenticationFailed:
@@ -65,14 +65,14 @@ class FormsAllView(APIView):
 class FormsUserView(APIView):
 
     # 사용자별 지원정보 상세조회
-    @swagger_auto_schema(operation_id="사용자 지원정보 상세조회")
+    @swagger_auto_schema(operation_id="지원서 id로 form 조회")
     def get(self, request, pk):
         form_obj = Form.objects.filter(id=pk)
         serializer = FormsSerializer(form_obj, many=True)
         return Response(serializer.data)
 
     # 지원정보 삭제
-    @swagger_auto_schema(operation_id="사용자 지원정보 삭제")
+    @swagger_auto_schema(operation_id="지원서 id로 form 삭제")
     def delete(self, request, pk):
         info = get_object_or_404(Form, id=pk)
         info.delete()
@@ -83,7 +83,7 @@ class FormsUserView(APIView):
     # 지원정보 수정
     @swagger_auto_schema(
         request_body=FormsPutSerializer,
-        operation_id="사용자 지원정보 수정",
+        operation_id="지원서 id로 form 수정",
     )
     def put(self, request, pk):
         info = get_object_or_404(Form, pk=pk)
@@ -95,7 +95,7 @@ class FormsUserView(APIView):
 
 class QesNumView(APIView):
     @swagger_auto_schema(
-        operation_id="질문 개수 요청",
+        operation_id="면접 질문 개수 요청",
     )
     def get(self, request, qesnum_id):
         qes_num = get_object_or_404(Qes_Num, qesnum_id=qesnum_id)
@@ -105,7 +105,7 @@ class QesNumView(APIView):
 class QesNumPostView(APIView):
     @swagger_auto_schema(
         request_body=QesNumSerializer,
-        operation_id="질문 개수 저장",
+        operation_id="면접 질문 개수 저장",
     )
     def post(self, request):
         # form_id = request.data.get("form_id")
