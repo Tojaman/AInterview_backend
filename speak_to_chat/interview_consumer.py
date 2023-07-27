@@ -467,7 +467,9 @@ class InterviewConsumer(WebsocketConsumer):
     # 질문과 대답 추가
     def add_question_answer(self, question, answer):
         existing_content = self.conversation[0]["content"]  # 기존 content 가져오기
-        new_content = existing_content + " Q. " + question + " A. " + answer
+        # new_content = existing_content + " Q. " + question + " A. " + answer
+        # new_content = existing_content + ", {'role':'assistant', 'content':'" + question + "'}, " + "{'role':'user', 'content':'" + answer + "'}"
+        new_content = existing_content + ', {{\'role\':\'assistant\', \'content\':\'{}\'}}, {{\'role\':\'user\', \'content\':\'{}\'}'.format(question, answer)
         self.conversation[0]["content"] = new_content
 
     def continue_conversation(self, form_object):
@@ -475,7 +477,7 @@ class InterviewConsumer(WebsocketConsumer):
         for chunk in openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=self.conversation,
-            temperature=0.7,
+            temperature=0.5,
             stream=True,
         ):
             finish_reason = chunk.choices[0].finish_reason
@@ -489,7 +491,7 @@ class InterviewConsumer(WebsocketConsumer):
 
             # 메시지를 클라이언트로 바로 전송
             self.send(json.dumps({"message": message, "finish_reason": finish_reason}))
-
+        print(self.conversation)
         Question.objects.create(content=messages, form_id=form_object)
     
     # 기본 면접 한글자 단위로 보내기
@@ -556,8 +558,28 @@ class InterviewConsumer(WebsocketConsumer):
         self.conversation = []
         self.conversation.append(
             {
-                "role": "user",
-                "content": 'function_name: [situation_interview] input: ["sector", "job", "career"] rule: [You are an expert in recruitment and interviewer specializing in finding the best talent. Ask questions that can judge my ability to cope with situations based “job”  and ask one question at a time. For example,let\'s say company = IT company, job = web front-end developer, career = newcomer. Then you can recognize that I am a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information. Such as "You have been assigned to work on a project where the design team has provided you with a visually appealing but intricate UI design for a web page. As you start implementing it, you realize that some of the design elements may not be feasible to achieve with the current technology or may negatively impact the performance. How would you handle this situation?". Do not ask this example question.]'
+                "role": "system",
+                # "content": 'function_name: [situation_interview] input: ["sector", "job", "career"] rule: [You are an expert in recruitment and interviewer specializing in finding the best talent. Ask questions that can judge my ability to cope with situations based “job”  and ask one question at a time. For example,let\'s say company = IT company, job = web front-end developer, career = newcomer. Then you can recognize that I am a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information. Such as "You have been assigned to work on a project where the design team has provided you with a visually appealing but intricate UI design for a web page. As you start implementing it, you realize that some of the design elements may not be feasible to achieve with the current technology or may negatively impact the performance. How would you handle this situation?". Do not ask this example question.]'
+                # + "function_name: [default] rule: [You should keep creating new questions creatively.You should never ask the same or similar questions before you generate at least 100 different questions. and ask one question at a time.You must speak only in Korean during the interview. from now on, You can only ask questions.You can't answer.]"
+                # + "situation_interview(Company="
+                # + selector_name
+                # + ", Job="
+                # + job_name
+                # + ", Career="
+                # + career
+                # + ")"
+                # + "default()",
+                # "content": 'function_name: [situation_interview] input: ["sector", "job", "career"] rule: [I want you to act as a strict interviewer, asking about specific situations questions for the interviewee. I will provide you with input forms including "sector", "job", "career" and "number_of_questions". I have given inputs, but you do not have to refer to those. Exemplary Questions1. What would you do if your boss gives an unfair work order? Exemplary Questions2. If the workload is too heavy and challenging, or if the tasks don\'t align with your skills, what would you do? Exemplary Questions3. In a project with you and two other team members, one person is trying to freeload. How would you handle this situation? While working on the final report for a team project, you discover a minor error that only you noticed. Fixing the error might cause you to miss the deadline. What would you do? Exemplary Questions4. As a new employee, your team leader instructs you to proceed with Plan A for a project. However, as the meetings progress, you realize that this could cause significant harm to the company. How would you address this with your team leader? Exemplary Questions5. If your boss interrupts and takes credit for your idea, how would you handle it? Exemplary Questions6. You are a new employee. During a company gathering, your boss mentions that they use company funds for personal expenses. What would you do in this situation? Ask questions about how to handle specific situations, similar to the example questions provided. You should create total of "number_of_questions" amount of questions, and provide it once at a time. You should ask the next question only after I have answered to the question. Do not include any explanations or additional information in your response, simply provide the generated question. You should also provide only one question at a time. ReOnce all questions are done, you should just say "수고하셨습니다." You must speak only in Korean during the interview]'
+                # + "function_name: [default] rule: [You should keep creating new questions creatively.You should never ask the same or similar questions before you generate at least 100 different questions. and ask one question at a time.You must speak only in Korean during the interview. from now on, You can only ask questions.You can't answer.]"
+                # + "situation_interview(Company="
+                # + selector_name
+                # + ", Job="
+                # + job_name
+                # + ", Career="
+                # + career
+                # + ")"
+                # + "default()",
+                "content": 'function_name: [situation_interview] input: ["sector", "job", "career"] rule: [I want you to act as a strict interviewer, asking about specific situations questions for the interviewee. I will provide you with input forms including "sector", "job", "career" and "number_of_questions". I have given inputs, but you do not have to refer to those. Exemplary Questions1. What would you do if your boss gives an unfair work order? Exemplary Questions2. If the workload is too heavy and challenging, or if the tasks don\'t align with your skills, what would you do? Exemplary Questions3. In a project with you and two other team members, one person is trying to freeload. How would you handle this situation? Ask questions about how to handle specific situations, similar to the example questions provided. You should create total of "number_of_questions" amount of questions, and provide it once at a time. You should ask the next question only after I have answered to the question. Do not include any explanations or additional information in your response, simply provide the generated question. Don\'t create duplicate questions. Don\'t generate answers to questions. Generate only one question once you generate it. Don\'t ever create multiple things. You should also provide only one question at a time. ReOnce all questions are done, you should just say "수고하셨습니다." You must speak only in Korean during the interview]'
                 + "function_name: [default] rule: [You should keep creating new questions creatively.You should never ask the same or similar questions before you generate at least 100 different questions. and ask one question at a time.You must speak only in Korean during the interview. from now on, You can only ask questions.You can't answer.]"
                 + "situation_interview(Company="
                 + selector_name
@@ -566,7 +588,7 @@ class InterviewConsumer(WebsocketConsumer):
                 + ", Career="
                 + career
                 + ")"
-                + "default()",
+                + "default()}",
             }
         )
     
