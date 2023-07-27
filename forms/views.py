@@ -97,8 +97,8 @@ class QesNumView(APIView):
     @swagger_auto_schema(
         operation_id="면접 질문 개수 요청",
     )
-    def get(self, request, qesnum_id):
-        qes_num = get_object_or_404(Qes_Num, qesnum_id=qesnum_id)
+    def get(self, request, form_id):
+        qes_num = get_object_or_404(Qes_Num, form_id=form_id)
         serializer = QesNumSerializer(qes_num)
         return Response(serializer.data)
 
