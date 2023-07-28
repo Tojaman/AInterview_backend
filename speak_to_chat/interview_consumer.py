@@ -152,6 +152,7 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # celery에 s3_url 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
                     transcription = process_whisper_data.delay(audio_file_url).get()
+                    print(transcription)
 
                     # Question 테이블의 마지막 Row 가져오기
                     last_question = Question.objects.latest("question_id")
@@ -364,12 +365,7 @@ class InterviewConsumer(WebsocketConsumer):
                     form_object = Form.objects.get(id=data["formId"])
 
                     # 기본 튜닝
-                    self.personal_interview_tuning(
-                        form_object.sector_name,
-                        form_object.job_name,
-                        form_object.career,
-                        form_object.resume,
-                    )
+                    self.personal_interview_tuning()
 
                     # 대화 계속하기
                     self.continue_conversation(form_object)
@@ -405,12 +401,7 @@ class InterviewConsumer(WebsocketConsumer):
                     questions_included = questions[self.before_qes:]
                     # print(questions_included)
 
-                    self.personal_interview_tuning(
-                        form_object.sector_name,
-                        form_object.job_name,
-                        form_object.career,
-                        form_object.resume,
-                    )
+                    self.personal_interview_tuning()
 
                     # question 테이블에서 질문과 답변에 대해 튜닝 과정에 추가함.
                     try:
@@ -588,18 +579,15 @@ class InterviewConsumer(WebsocketConsumer):
         ]
         
         
-    def personal_interview_tuning(self, selector_name, job_name, career, resume):
+    def personal_interview_tuning(self):
         self.conversation = [
             {
+                "role": "system",
+                "content": "You are a strict interviewer. You will ask the user personality interview questions commonly asked in job interviews. You shouldn't make any unnecessary expressions aside from asking questions."
+            },
+
+            {
                 "role": "user",
-                "content": 'function_name: [personality_interview] input: ["sector", "job", "career", "resume", "number_of_questions"] rule: [I want you to act as a strict interviewer, asking personality questions for the interviewee. I will provide you with input forms including "sector", "job", "career", "resume", and "number_of_questions". I have given inputs, but you do not have to refer to those. Your task is to simply make common personality questions and provide questions to me. You should create total of "number_of_questions" amount of questions, and provide it once at a time. You should ask the next question only after I have answered to the question. Do not include any explanations or additional information in your response, simply provide the generated question. You should also provide only one question at a time. Example questions would be questions such as "How do you handle stress and pressure?", "If you could change one thing about your personality, what would it be and why?". Remember, these questions are related to personality. Once all questions are done, you should just say "수고하셨습니다." You must speak only in Korean during the interview.] personality_interview('
-                + str(selector_name)
-                + ", "
-                + str(job_name)
-                + ", "
-                + str(career)
-                + ", "
-                + str(resume)
-                + ", 3)",
+                "content": 'I want you to give personality questions for the interviewee. Your task is to simply ask common personality questions that interviewers ask in job interviews. You should only focus on providing questions, and not say any unnecessary expressions. Provide only one question at a time. Do not ever to not include any explanations or additional information in your response. Simply provide the generated question please. Remember to only provide questions that are related to personality. You must speak only in Korean during the interview. Keep in mind - Don\'t ask the interviewee to introduce himself. Don\'t even greet the interviewee. Just ask interview questions, one at a time.'
             }
         ]
