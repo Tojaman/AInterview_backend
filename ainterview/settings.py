@@ -36,7 +36,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 load_dotenv()
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
-
+HOST = os.environ.get("HOST_IP")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -89,9 +89,10 @@ CORS_ORIGIN_WHITELIST = [
     "http://localhost:3000",
     "http://frontend:3000",
     "http://backend:8000",
+    "http://"+HOST
 ]
 CORS_ALLOW_CREDENTIALS = True
-ALLOWED_HOSTS = ["backend", "localhost"]
+ALLOWED_HOSTS = ["backend", "localhost", HOST]
 
 ROOT_URLCONF = "ainterview.urls"
 
