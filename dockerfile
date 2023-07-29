@@ -9,11 +9,12 @@ RUN pip install --upgrade pip
 COPY requirements.txt /backend/
 RUN pip install -r requirements.txt && pip install gevent
 RUN pip install python-dotenv
-# pika 추가
+
 
 # 소스 코드 복사
 COPY . /backend/
 
 # Django 프로젝트 실행
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
-# ENTRYPOINT ["daphne", "-b", "0.0.0.0", "ainterview.asgi:application"]
+EXPOSE 8000
+
+# CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "ainterview.asgi:application"]
