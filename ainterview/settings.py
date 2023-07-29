@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 import os
+
 from dotenv import load_dotenv
 
 # from python_dotenv import load_dotenv
@@ -35,6 +36,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 load_dotenv()
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -121,12 +123,11 @@ WSGI_APPLICATION = "ainterview.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        # "ENGINE": "mysql.connector.django",
-        "NAME": os.environ.get("MYSQL_DATABASE"),
+        "NAME": os.environ.get("MYSQL_NAME"),
         "USER": os.environ.get("MYSQL_USER"),
         "PASSWORD": os.environ.get("MYSQL_PASSWORD"),
-        "HOST": "ainterview_db",
-        "PORT": os.environ.get("MYSQL_PORT"),
+        "HOST": os.environ.get("HOST"),
+        "PORT": os.environ.get("PORT")
     }
 }
 
