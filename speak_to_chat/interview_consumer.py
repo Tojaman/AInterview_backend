@@ -206,7 +206,6 @@ class InterviewConsumer(WebsocketConsumer):
                     Answer.objects.create(
                         content=transcription, question_id=last_question, recode_file=audio_file_url
                     )
-                    # print(transcription)
 
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
@@ -273,7 +272,6 @@ class InterviewConsumer(WebsocketConsumer):
                 # 오디오 파일이 없는 경우
                 if data["type"] == "withoutAudio":
                     form_object = Form.objects.get(id=data["formId"])
-                    self.questions.clear()
                     # 기본 튜닝
                     self.deep_interview_tuning(
                         form_object.sector_name,
@@ -366,7 +364,6 @@ class InterviewConsumer(WebsocketConsumer):
                 # 오디오 파일이 없는 경우
                 if data["type"] == "withoutAudio":
                     form_object = Form.objects.get(id=data["formId"])
-                    self.questions.clear()
 
                     # 기본 튜닝
                     self.personal_interview_tuning()
@@ -494,8 +491,6 @@ class InterviewConsumer(WebsocketConsumer):
             self.send(json.dumps({"message": message, "finish_reason": finish_reason}))
         print(self.conversation)
         Question.objects.create(content=messages, form_id=form_object)
-        # return response.choices[0].message["content"]
-        
     
     # 기본 면접 한글자 단위로 보내기
     def default_conversation(self, form_object, question_content):
