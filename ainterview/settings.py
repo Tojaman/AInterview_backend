@@ -88,11 +88,10 @@ CORS_ORIGIN_WHITELIST = [
     "http://127.0.0.1:3000",
     "http://localhost:3000",
     "http://frontend:3000",
-    "http://backend:8000",
-    "http://"+HOST
+    "http://backend:8000"
 ]
 CORS_ALLOW_CREDENTIALS = True
-ALLOWED_HOSTS = ["backend", "localhost", HOST]
+ALLOWED_HOSTS = ["backend", "localhost", "ainterview.site"]
 
 ROOT_URLCONF = "ainterview.urls"
 
