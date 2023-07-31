@@ -581,7 +581,6 @@ class InterviewConsumer(WebsocketConsumer):
     def situation_interview_tuning(self, selector_name, job_name, career):
         self.conversation = [
             {
-
                 "role": "system",
                 "content" : 'I am the person who wants to be a'+job_name+'and you are the interviewer. You ask me interview questions about specific situations that might arise while doing that job. Also, the content of the question should be specific and creative. and give me just one. Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". You just give an answer when it works, without explaining how it works and your role. Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Your answer is only in Korean.'
             },
