@@ -223,13 +223,13 @@ class InterviewConsumer(WebsocketConsumer):
                     )
 
                     # question 테이블에서 질문과 답변에 대해 튜닝 과정에 추가함.
-                    try:
-                        for question in questions_included:
-                            answer = question.answer
-                            self.add_question_answer(question.content, answer.content)
-                    except:
-                        error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
-                        print(error_message)
+                    # try:
+                    for question in questions_included:
+                    #     answer = question.answer
+                        self.add_question_answer(question.content)
+                    # except:
+                    #     error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
+                    #     print(error_message)
 
                     self.continue_conversation(form_object)
 
@@ -290,7 +290,7 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file = ContentFile(audio_data)
 
                     # 파일 업로드 및 URL 받아오기
-                    audio_file_url=get_file_url("audio", audio_file)
+                    audio_file_url = get_file_url("audio", audio_file)
 
                     # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
                     transcription = process_whisper_data.delay(audio_file_url).get()
@@ -404,13 +404,13 @@ class InterviewConsumer(WebsocketConsumer):
                     self.personal_interview_tuning()
 
                     # question 테이블에서 질문과 답변에 대해 튜닝 과정에 추가함.
-                    try:
-                        for question in questions_included:
-                            answer = question.answer
-                            self.add_question_answer(question.content, answer.content)
-                    except:
-                        error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
-                        print(error_message)
+                    # try:
+                    for question in questions_included:
+                    #         answer = question.answer
+                        self.add_question_answer(question.content)
+                    # except:
+                    #     error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
+                    #     print(error_message)
 
                     self.continue_conversation(form_object)
 
@@ -456,17 +456,39 @@ class InterviewConsumer(WebsocketConsumer):
         
 
     # 질문과 대답 추가
-    def add_question_answer(self, question, answer):
-        existing_content = self.conversation[0]["content"]  # 기존 content 가져오기
-        new_content = existing_content + " Q. " + question + " A. " + answer
-        self.conversation[0]["content"] = new_content
+    def add_question_answer(self, question, answer=None):
+        self.conversation.append(
+            {
+                "role" : "assistant",
+                "content": question
+            }
+        )
+        # 심층면접의 경우
+        if answer is not None:
+            self.conversation.append(
+                {
+                    "role": "user",
+                    "content": answer + "Ask me one question in a tail-to-tail manner about what I answer. There may be technical questions about the answer, and there may be questions that you, as an interviewer, would dig into the answer. If you don\'t have any more questions, move on to the next topic."
+                }
+            )
+        else:
+            self.conversation.append(
+                {
+                    "role": "user",
+                    "content": "Another question, give me only one."
+                }
+            )
+
+        # existing_content = self.conversation[0]["content"]  # 기존 content 가져오기
+        # new_content = existing_content + " Q. " + question + " A. " + answer
+        # self.conversation[0]["content"] = new_content
 
     def continue_conversation(self, form_object):
         messages = ""
         for chunk in openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=self.conversation,
-            temperature=0.7,
+            temperature=0.9,
             stream=True,
         ):
             finish_reason = chunk.choices[0].finish_reason
@@ -477,7 +499,6 @@ class InterviewConsumer(WebsocketConsumer):
             message = chunk.choices[0].delta["content"]
 
             messages += message
-
             # 메시지를 클라이언트로 바로 전송
             self.send(json.dumps({"message": message, "finish_reason": finish_reason}))
 
@@ -544,13 +565,14 @@ class InterviewConsumer(WebsocketConsumer):
         
     # 상황 면접 튜닝
     def situation_interview_tuning(self, selector_name, job_name, career):
-        self.conversation = []
-        self.conversation.append(
+        self.conversation = [
             {
+
                 "role": "system",
-                "content": "I am the person who wants to be a"+ job_name +"and you are the interviewer. You ask me interview questions about specific situations that might arise while doing that job. Also, the content of the question should be specific and creative. and give me just one. Also, you, the interviewer, do not say anything outside of the question. You just give an answer when it works, without explaining how it works and your role. Your answer is only in Korean."
-            }
-        )
+                "content" : 'I am the person who wants to be a'+job_name+'and you are the interviewer. You ask me interview questions about specific situations that might arise while doing that job. Also, the content of the question should be specific and creative. and give me just one. Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". You just give an answer when it works, without explaining how it works and your role. Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Your answer is only in Korean.'
+            },
+
+        ]
     
     # 심층 면접 튜닝
     def deep_interview_tuning(self, selector_name, job_name, career, resume):
@@ -558,8 +580,8 @@ class InterviewConsumer(WebsocketConsumer):
         self.conversation = [
             {
                 "role": "user",
-                "content": 'function_name: [interviewee_info] input: ["Company", "Job", "Career"] rule: [Please act as a skillful interviewer. We will provide the input form including "Company," "Professional," and "Career." Look at the sentences "Company," "Job," and "Career" to get information about me as an interview applicant. For example, let\'s say company = IT company, job = web front-end developer, experience = newcomer. Then you can recognize that you\'re a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information. You must speak only in Korean during the interview. You can only ask questions. You can\'t answer.]'
-                + 'function_name: [aggressive_position] rule: [Ask me questions in a tail-to-tail manner about what I answer. There may be technical questions about the answer, and there may be questions that you, as an interviewer, would dig into the answer.. For example, if the question asks, "What\'s your web framework?" the answer is, "It is React framework." So the new question is, "What do you use as a state management tool in React, and why do you need this?" It should be the same question. If you don\'t have any more questions, move on to the next topic.] '
+                "content":'function_name: [interviewee_info] input: ["Company", "Job", "Career"] rule: [Please act as a skillful interviewer. We will provide the input form including "Company," "Professional," and "Career." Look at the sentences "Company," "Job," and "Career" to get information about me as an interview applicant. For example, let\'s say company = IT company, job = web front-end developer, experience = newcomer. Then you can recognize that you\'re a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information. Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". You just give an answer when it works, without explaining how it works and your role. Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Your answer is only in Korean.]'
+                # + 'function_name: [aggressive_position] rule: [Ask me questions in a tail-to-tail manner about what I answer. There may be technical questions about the answer, and there may be questions that you, as an interviewer, would dig into the answer.. For example, if the question asks, "What\'s your web framework?" the answer is, "It is React framework." So the new question is, "What do you use as a state management tool in React, and why do you need this?" It should be the same question. If you don\'t have any more questions, move on to the next topic.] '
                 + 'function_name: [self_introduction] input : ["self-introduction"] rule: [We will provide an input form including a "self-introduction." Read this "self-introduction" and extract the content to generate a question. just ask one question. Don\'t ask too long questions. The question must have a definite purpose. and Just ask one question at a time.'
                 + 'interviewee_info(Company="'
                 + selector_name
@@ -570,8 +592,8 @@ class InterviewConsumer(WebsocketConsumer):
                 + '")'
                 + 'self_introduction("'
                 + resume
-                + '")'
-                + "aggressive_position()",
+                + '")',
+                # + "aggressive_position()",
             }
         ]
         
@@ -580,11 +602,11 @@ class InterviewConsumer(WebsocketConsumer):
         self.conversation = [
             {
                 "role": "system",
-                "content": "You are a strict interviewer. You will ask the user personality interview questions commonly asked in job interviews. You shouldn't make any unnecessary expressions aside from asking questions."
+                "content" : 'You are a strict interviewer. You will ask the user personality interview questions commonly asked in job interviews. You shouldn\'t make any unnecessary expressions aside from asking questions. I want you to give personality questions for the interviewee. Your task is to simply ask common personality questions that interviewers ask in job interviews. You should only focus on providing questions, and not say any unnecessary expressions. Provide only one question at a time. Do not ever to not include any explanations or additional information in your response. Simply provide the generated question please. Remember to only provide questions that are related to personality. Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". You just give an answer when it works, without explaining how it works and your role. Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Your answer is only in Korean. You must speak only in Korean during the interview. Keep in mind - Don\'t ask the interviewee to introduce himself. Don\'t even greet the interviewee. Just ask interview questions, one at a time." You can ask questions that include personal situations such as "I\'m busy at work, but I have to attend an in-house event. How would you tell the team leader?" or "I met a person I liked at a blind date, but I left my wallet behind." How would you say that?'
             },
 
-            {
-                "role": "user",
-                "content": 'I want you to give personality questions for the interviewee. Your task is to simply ask common personality questions that interviewers ask in job interviews. You should only focus on providing questions, and not say any unnecessary expressions. Provide only one question at a time. Do not ever to not include any explanations or additional information in your response. Simply provide the generated question please. Remember to only provide questions that are related to personality. You must speak only in Korean during the interview. Keep in mind - Don\'t ask the interviewee to introduce himself. Don\'t even greet the interviewee. Just ask interview questions, one at a time.'
-            }
+            # {
+            #     "role": "user",
+            #     "content": 'I want you to give personality questions for the interviewee. Your task is to simply ask common personality questions that interviewers ask in job interviews. You should only focus on providing questions, and not say any unnecessary expressions. Provide only one question at a time. Do not ever to not include any explanations or additional information in your response. Simply provide the generated question please. Remember to only provide questions that are related to personality. You must speak only in Korean during the interview. Keep in mind - Don\'t ask the interviewee to introduce himself. Don\'t even greet the interviewee. Just ask interview questions, one at a time.'
+            # }
         ]
