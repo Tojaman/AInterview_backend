@@ -19,7 +19,6 @@ def get_file_url(file_type, file):
     else:
         file_key = "profile_image/" + str(uuid.uuid4()) + ".jpg"
 
-
     # 파일을 S3 버킷에 업로드
     s3_client.put_object(Body=file, Bucket=os.environ.get("AWS_STORAGE_BUCKET_NAME"), Key=file_key)
     # 업로드된 파일의 URL을 구성

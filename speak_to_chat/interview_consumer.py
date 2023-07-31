@@ -26,10 +26,6 @@ class InterviewConsumer(WebsocketConsumer):
         self.accept()
         # 대화 기록을 저장할 리스트
         self.conversation = []
-        self.questions = []
-        self.questions = [""] * 10
-        self.question_index = 0
-        self.one = True
 
     def disconnect(self, closed_code):
         form_object = Form.objects.get(id=self.form_id)
@@ -60,9 +56,6 @@ class InterviewConsumer(WebsocketConsumer):
             self.deep_question_num = data["deepQuestionNum"]
             self.personality_question_num = data["personalityQuestionNum"]
             self.form_id = data["formId"]
-            
-            # n개의 질문(상황, 인성) 생성
-            #generate_questions(self.situation_question_num, self.personality_question_num)
 
             # 이전 면접에서 저장되었던 질문 수
             form_object = Form.objects.get(id=data["formId"])
@@ -177,9 +170,6 @@ class InterviewConsumer(WebsocketConsumer):
             # 상황 면접인 경우
             if self.interview_type == "situation":
                 print("상황 면접의 경우")
-                # self.questions.clear()
-                question_count = self.situation_question_num
-                
 
                 # 오디오 파일이 없는 경우
                 if data["type"] == "withoutAudio":
@@ -194,10 +184,6 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 대화 계속하기
                     self.continue_conversation(form_object)
-                    
-                    question_count -= 1
-                    self.question_index += 1
-                    
                     
                 elif data["type"] == "withAudio":
                     # # base64 디코딩
@@ -228,7 +214,6 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 기존 questions 데이터를 슬라이싱하여 새롭게 생성된 questions만 가져옴
                     questions_included = questions[self.before_qes:]
-                    # print(questions_included)
 
                     self.situation_interview_tuning(
                         form_object.sector_name,
@@ -252,10 +237,6 @@ class InterviewConsumer(WebsocketConsumer):
                         
                     # if question_count != 0:
                     self.continue_conversation(form_object)
-                    # question_count -= 1
-                    # self.question_index += 1
-                    # print(self.question_index)
-
                     
                 elif data["type"] == "noReply":
                     # base64 디코딩
@@ -323,7 +304,6 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 답변 테이블에 추가
                     Answer.objects.create(content=transcription, question_id=last_question, recode_file=audio_file_url)
-                    print(transcription)
 
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
@@ -478,15 +458,6 @@ class InterviewConsumer(WebsocketConsumer):
             except:
                 pass
         
-
-    # 질문과 대답 추가
-    # def add_question_answer(self, question, answer):
-    #     existing_content = self.conversation[0]["content"]  # 기존 content 가져오기
-    #     # new_content = existing_content + " Q. " + question + " A. " + answer
-    #     # new_content = existing_content + ", {'role':'assistant', 'content':'" + question + "'}, " + "{'role':'user', 'content':'" + answer + "'}"
-    #     new_content = existing_content + ", {{'role':'assistant', 'content':'{}'}}, {{'role':'user', 'content':'{}'}}".format(question, answer)
-    #     self.conversation[0]["content"] = new_content
-    
     def add_question_answer(self, question):
         self.conversation.append(
             {
@@ -523,33 +494,6 @@ class InterviewConsumer(WebsocketConsumer):
             self.send(json.dumps({"message": message, "finish_reason": finish_reason}))
         print(self.conversation)
         Question.objects.create(content=messages, form_id=form_object)
-        # self.questions[question_order] = messages
-        
-        
-            
-        
-    
-    # 한번에 n개의 질문 생성
-    def generate_questions(self, messages):
-        response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=messages,
-        temperature=0.7,
-        )
-        question_list = response.choices[0].message["content"]
-        
-        # 정규표현식 패턴: 숫자로 시작하고 점(.)이 따라오는 부분을 매치
-        # ^ : 문자열의 시작
-        # \d : 숫자를 나타내는 메타 문자(+ 앞에 숫자 패턴이 1회이상 반복되어야 함)
-        # \. : . 자체를 의미(정규표현식에서 .은 특수한 의미를 가지는 메타 문자이기 때문에 이스케이프(\)해야 함)
-        # \s : 공백 문자(점 뒤에 공백 문자가 온다는 뜻)
-        pattern = r'^\d+\.\s'
-        # re.sub() : 정규표현식 패턴에 일치하는 부분을 두 번째 매개변수(''공백)으로 대체
-        # questions : 순번과 .을 뺀 질문만 남아있는 리스트
-        questions = [re.sub(pattern, '', question) for question in question_list]
-        print(questions)
-        return questions
-        
         # return response.choices[0].message["content"]
         
     

@@ -123,7 +123,6 @@ class GPTAnswerView(APIView):
             type=openapi.TYPE_OBJECT,
             properties={
                 'question_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='question_id 입력'),
-                # 'user_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='user_id 입력'),
             },
         ),
         responses={
@@ -134,13 +133,12 @@ class GPTAnswerView(APIView):
     def post(self, request, *args, **kwargs):
         question_id = request.data.get("question_id")
         question = get_object_or_404(Question, question_id=question_id)
-        answer = Answer.objects.get(question_id=question_id)
         form = question.form_id
         form_id = form.id
 
         # generate_gpt_answer 메소드 불러오기
         # 사용자 정보(직종, 경력, 자소서 등) 주기
-        gpt_answer_content = self.generate_gpt_answer(question.content, answer.content, form_id)
+        gpt_answer_content = self.generate_gpt_answer(question.content, form_id)
 
         # GPTAnswer 생성 후 저장
         gpt_answer = GPTAnswer(content=gpt_answer_content, question_id=question)
@@ -149,15 +147,12 @@ class GPTAnswerView(APIView):
         return Response({"message": "GPT 답변 생성 완료"}, status=status.HTTP_201_CREATED)
 
     # GPT 답변 생성 메소드
-    def generate_gpt_answer(self, question, answer, form_id):
+    def generate_gpt_answer(self, question, form_id):
         form = Form.objects.get(id=form_id)
         sector_name = form.sector_name
         job_name = form.job_name
         career = form.career
         resume = form.resume
-        # You are now a candidate responding to the interviewer's questions.\ Generate answers to questions based on the job you applied for: {sector_name}, the job group: {job_name}, the career: {career}, and the resume: {resume}.\ questions : {question}
-        # You are an applicant in an interview. Your task is to answer the interviewer's question. I'll give you the questions, applicant's answer and the applicant's information below, so write your answer based on the applicant's information. Don't say the contents of the self-introduction letter as it is, but refer to it and answer it. Question: {question}, applicant's answer : {answer} Support field: {sector_name} Job: {job_name} Self-introduction letter: {resume}
-        # You are the one who corrects the answer to the interview question. Your task is to correct the applicant's answer based on the applicant's job and self-introduction letter and change it to a better answer. I will give you questions, answers, jobs, and self-introduction later, so write a better answer question: {question}, answer : {answer} Job: {job_name} Self-introduction letter: {resume}
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             # 너는 면접중인 지원자야. 너의 task는 면접관의 질문에 답하는거야. 질문과 지원자의 정보를 아래 줄테니깐 지원자의 정보를 기반으로 답변을 작성해줘. 질문 : {question}지원 분야 : {sector_name} 직무 : {job_name} 자기소개서 : {resume}
