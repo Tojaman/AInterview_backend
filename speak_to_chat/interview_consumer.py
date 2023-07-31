@@ -26,6 +26,10 @@ class InterviewConsumer(WebsocketConsumer):
         self.accept()
         # 대화 기록을 저장할 리스트
         self.conversation = []
+        self.questions = []
+        self.questions = [""] * 10
+        self.question_index = 0
+        self.one = True
 
     def disconnect(self, closed_code):
         form_object = Form.objects.get(id=self.form_id)
@@ -56,6 +60,9 @@ class InterviewConsumer(WebsocketConsumer):
             self.deep_question_num = data["deepQuestionNum"]
             self.personality_question_num = data["personalityQuestionNum"]
             self.form_id = data["formId"]
+            
+            # n개의 질문(상황, 인성) 생성
+            #generate_questions(self.situation_question_num, self.personality_question_num)
 
             # 이전 면접에서 저장되었던 질문 수
             form_object = Form.objects.get(id=data["formId"])
@@ -170,11 +177,14 @@ class InterviewConsumer(WebsocketConsumer):
             # 상황 면접인 경우
             if self.interview_type == "situation":
                 print("상황 면접의 경우")
+                # self.questions.clear()
+                question_count = self.situation_question_num
+                
 
                 # 오디오 파일이 없는 경우
                 if data["type"] == "withoutAudio":
                     form_object = Form.objects.get(id=data["formId"])
-
+                    
                     # 기본 튜닝
                     self.situation_interview_tuning(
                         form_object.sector_name,
@@ -184,7 +194,11 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 대화 계속하기
                     self.continue_conversation(form_object)
-
+                    
+                    question_count -= 1
+                    self.question_index += 1
+                    
+                    
                 elif data["type"] == "withAudio":
                     # # base64 디코딩
                     audio_blob = data["audioBlob"]
@@ -206,7 +220,7 @@ class InterviewConsumer(WebsocketConsumer):
                     Answer.objects.create(
                         content=transcription, question_id=last_question, recode_file=audio_file_url
                     )
-                    print(transcription)
+                    # print(transcription)
 
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
@@ -221,17 +235,26 @@ class InterviewConsumer(WebsocketConsumer):
                         form_object.job_name,
                         form_object.career,
                     )
-
+                    for question in questions_included:
+                        answer = question.answer
+                    self.add_question_answer(question.content)
+                    
                     # question 테이블에서 질문과 답변에 대해 튜닝 과정에 추가함.
-                    try:
-                        for question in questions_included:
-                            answer = question.answer
-                            self.add_question_answer(question.content, answer.content)
-                    except:
-                        error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
-                        print(error_message)
-
+                    # try:
+                    #     if self.one:
+                    #         for question in questions_included:
+                    #             answer = question.answer
+                    #             self.add_question_answer(question.content, answer.content)
+                    #         self.one = False
+                    # except:
+                    #     error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
+                    #     print(error_message)
+                        
+                    # if question_count != 0:
                     self.continue_conversation(form_object)
+                    # question_count -= 1
+                    # self.question_index += 1
+                    # print(self.question_index)
 
                     
                 elif data["type"] == "noReply":
@@ -269,7 +292,7 @@ class InterviewConsumer(WebsocketConsumer):
                 # 오디오 파일이 없는 경우
                 if data["type"] == "withoutAudio":
                     form_object = Form.objects.get(id=data["formId"])
-
+                    self.questions.clear()
                     # 기본 튜닝
                     self.deep_interview_tuning(
                         form_object.sector_name,
@@ -363,6 +386,7 @@ class InterviewConsumer(WebsocketConsumer):
                 # 오디오 파일이 없는 경우
                 if data["type"] == "withoutAudio":
                     form_object = Form.objects.get(id=data["formId"])
+                    self.questions.clear()
 
                     # 기본 튜닝
                     self.personal_interview_tuning()
@@ -456,11 +480,27 @@ class InterviewConsumer(WebsocketConsumer):
         
 
     # 질문과 대답 추가
-    def add_question_answer(self, question, answer):
-        existing_content = self.conversation[0]["content"]  # 기존 content 가져오기
-        new_content = existing_content + " Q. " + question + " A. " + answer
-        self.conversation[0]["content"] = new_content
-
+    # def add_question_answer(self, question, answer):
+    #     existing_content = self.conversation[0]["content"]  # 기존 content 가져오기
+    #     # new_content = existing_content + " Q. " + question + " A. " + answer
+    #     # new_content = existing_content + ", {'role':'assistant', 'content':'" + question + "'}, " + "{'role':'user', 'content':'" + answer + "'}"
+    #     new_content = existing_content + ", {{'role':'assistant', 'content':'{}'}}, {{'role':'user', 'content':'{}'}}".format(question, answer)
+    #     self.conversation[0]["content"] = new_content
+    
+    def add_question_answer(self, question):
+        self.conversation.append(
+            {
+                "role" : "assistant",
+                "content": question
+            }
+        )
+        self.conversation.append(
+            {
+                "role": "user",
+                "content": "앞에 나온 질문과 같거나 비슷한 맥락의 질문이 아닌 완전히 새로운 질문을 생성해줘."
+            }
+        )
+        
     def continue_conversation(self, form_object):
         messages = ""
         for chunk in openai.ChatCompletion.create(
@@ -468,6 +508,7 @@ class InterviewConsumer(WebsocketConsumer):
             messages=self.conversation,
             temperature=0.7,
             stream=True,
+            max_tokens=300
         ):
             finish_reason = chunk.choices[0].finish_reason
             if chunk.choices[0].finish_reason == "stop":
@@ -480,8 +521,37 @@ class InterviewConsumer(WebsocketConsumer):
 
             # 메시지를 클라이언트로 바로 전송
             self.send(json.dumps({"message": message, "finish_reason": finish_reason}))
-
+        print(self.conversation)
         Question.objects.create(content=messages, form_id=form_object)
+        # self.questions[question_order] = messages
+        
+        
+            
+        
+    
+    # 한번에 n개의 질문 생성
+    def generate_questions(self, messages):
+        response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=messages,
+        temperature=0.7,
+        )
+        question_list = response.choices[0].message["content"]
+        
+        # 정규표현식 패턴: 숫자로 시작하고 점(.)이 따라오는 부분을 매치
+        # ^ : 문자열의 시작
+        # \d : 숫자를 나타내는 메타 문자(+ 앞에 숫자 패턴이 1회이상 반복되어야 함)
+        # \. : . 자체를 의미(정규표현식에서 .은 특수한 의미를 가지는 메타 문자이기 때문에 이스케이프(\)해야 함)
+        # \s : 공백 문자(점 뒤에 공백 문자가 온다는 뜻)
+        pattern = r'^\d+\.\s'
+        # re.sub() : 정규표현식 패턴에 일치하는 부분을 두 번째 매개변수(''공백)으로 대체
+        # questions : 순번과 .을 뺀 질문만 남아있는 리스트
+        questions = [re.sub(pattern, '', question) for question in question_list]
+        print(questions)
+        return questions
+        
+        # return response.choices[0].message["content"]
+        
     
     # 기본 면접 한글자 단위로 보내기
     def default_conversation(self, form_object, question_content):
@@ -544,47 +614,29 @@ class InterviewConsumer(WebsocketConsumer):
         
     # 상황 면접 튜닝
     def situation_interview_tuning(self, selector_name, job_name, career):
-        self.conversation = []
-        self.conversation.append(
+        print(self.questions)
+        # You are an interviewer who asks a question to an applicant. Your task is to assume specific situations that may occur while working as a {job_name} in the {selector_name} field and ask how you will deal with them. Don't say anything but a question. Generate only one question, not several. Do not generate words other than questions, such as evaluation, explanation, and answers.
+        self.conversation = [
             {
                 "role": "system",
-                "content": "I am the person who wants to be a"+ job_name +"and you are the interviewer. You ask me interview questions about specific situations that might arise while doing that job. Also, the content of the question should be specific and creative. and give me just one. Also, you, the interviewer, do not say anything outside of the question. You just give an answer when it works, without explaining how it works and your role. Your answer is only in Korean."
-            }
-        )
+                "content": f"""너는 지원자에게 질문을 하는 면접관이야. 너의 임무는 {selector_name} 분야에서 {job_name} 으로 일하면서 발생할 수 있는 구체적인 상황에 대해 가정을 하고 그 상황에 어떻게 대처하겠냐고 질문하는거야. 질문 외에 어떠한 말도 하지마. 여러개가 아닌 하나의 질문만 생성해. 평가, 설명, 답변과 같이 질문 외에 다른 말은 생성하지마."""
+            },
+        ]
     
     # 심층 면접 튜닝
     def deep_interview_tuning(self, selector_name, job_name, career, resume):
-        
         self.conversation = [
             {
-                "role": "user",
-                "content": 'function_name: [interviewee_info] input: ["Company", "Job", "Career"] rule: [Please act as a skillful interviewer. We will provide the input form including "Company," "Professional," and "Career." Look at the sentences "Company," "Job," and "Career" to get information about me as an interview applicant. For example, let\'s say company = IT company, job = web front-end developer, experience = newcomer. Then you can recognize that you\'re a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information. You must speak only in Korean during the interview. You can only ask questions. You can\'t answer.]'
-                + 'function_name: [aggressive_position] rule: [Ask me questions in a tail-to-tail manner about what I answer. There may be technical questions about the answer, and there may be questions that you, as an interviewer, would dig into the answer.. For example, if the question asks, "What\'s your web framework?" the answer is, "It is React framework." So the new question is, "What do you use as a state management tool in React, and why do you need this?" It should be the same question. If you don\'t have any more questions, move on to the next topic.] '
-                + 'function_name: [self_introduction] input : ["self-introduction"] rule: [We will provide an input form including a "self-introduction." Read this "self-introduction" and extract the content to generate a question. just ask one question. Don\'t ask too long questions. The question must have a definite purpose. and Just ask one question at a time.'
-                + 'interviewee_info(Company="'
-                + selector_name
-                + '", Job="'
-                + job_name
-                + '", Career="'
-                + career
-                + '")'
-                + 'self_introduction("'
-                + resume
-                + '")'
-                + "aggressive_position()",
-            }
+                "role": "system",
+                "content": f"""From now on, you are acting as a job interviewer. Create technical and professional questions that are important to {job_name} based on {resume} of applicants with {career} experience applying for {selector_name}. Don't answer the question. Ask me a new type of question that doesn't overlap or have a similar context with the questions {self.questions}. Generate only one question at a time and don't give an evaluation or your opinion other than the question. Make sure to create questions in Korean."""
+            },
         ]
         
-        
+    # 인성 면접 튜닝
     def personal_interview_tuning(self):
         self.conversation = [
             {
                 "role": "system",
-                "content": "You are a strict interviewer. You will ask the user personality interview questions commonly asked in job interviews. You shouldn't make any unnecessary expressions aside from asking questions."
+                "content": f"""You are a strict interviewer. You will ask the user personality interview questions commonly asked in job interviews. You shouldn't make any unnecessary expressions aside from asking questions. I want you to give personality questions for the interviewee. Your task is to simply ask common personality questions that interviewers ask in job interviews. You should only focus on providing questions, and not say any unnecessary expressions. Provide only one question at a time. Do not ever to not include any explanations or additional information in your response. Ask me a new type of question that doesn't overlap or have a similar context with the questions {self.questions}.Simply provide the generated question please. Remember to only provide questions that are related to personality. You must speak only in Korean during the interview. Keep in mind - Don't ask the interviewee to introduce himself. Don't even greet the interviewee. Just ask interview questions, one at a time."""
             },
-
-            {
-                "role": "user",
-                "content": 'I want you to give personality questions for the interviewee. Your task is to simply ask common personality questions that interviewers ask in job interviews. You should only focus on providing questions, and not say any unnecessary expressions. Provide only one question at a time. Do not ever to not include any explanations or additional information in your response. Simply provide the generated question please. Remember to only provide questions that are related to personality. You must speak only in Korean during the interview. Keep in mind - Don\'t ask the interviewee to introduce himself. Don\'t even greet the interviewee. Just ask interview questions, one at a time.'
-            }
         ]

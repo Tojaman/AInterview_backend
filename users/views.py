@@ -155,7 +155,7 @@ class UploadProfilePictureView(APIView):
     # 사용자를 특정할 수 있는 정보(이메일..)이 필요한데 어떻게 받지 ?
     def post(self, request):
         # 사용자로부터 프로필 사진을 입력 받음
-        image_file = request.FILES["picture"]
+        image_file = request.data["picture"]
         user_info = request.data["pk"]
         
         # 사용자 객체 생성
