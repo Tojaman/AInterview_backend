@@ -174,7 +174,7 @@ class InterviewConsumer(WebsocketConsumer):
                 # 오디오 파일이 없는 경우
                 if data["type"] == "withoutAudio":
                     form_object = Form.objects.get(id=data["formId"])
-
+                    
                     # 기본 튜닝
                     self.situation_interview_tuning(
                         form_object.sector_name,
@@ -184,7 +184,7 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 대화 계속하기
                     self.continue_conversation(form_object)
-
+                    
                 elif data["type"] == "withAudio":
                     # # base64 디코딩
                     audio_blob = data["audioBlob"]
@@ -206,7 +206,6 @@ class InterviewConsumer(WebsocketConsumer):
                     Answer.objects.create(
                         content=transcription, question_id=last_question, recode_file=audio_file_url
                     )
-                    print(transcription)
 
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
@@ -214,7 +213,6 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 기존 questions 데이터를 슬라이싱하여 새롭게 생성된 questions만 가져옴
                     questions_included = questions[self.before_qes:]
-                    # print(questions_included)
 
                     self.situation_interview_tuning(
                         form_object.sector_name,
@@ -222,8 +220,6 @@ class InterviewConsumer(WebsocketConsumer):
                         form_object.career,
                     )
 
-                    # question 테이블에서 질문과 답변에 대해 튜닝 과정에 추가함.
-                    # try:
                     for question in questions_included:
                     #     answer = question.answer
                         self.add_question_answer(question.content)
@@ -232,7 +228,6 @@ class InterviewConsumer(WebsocketConsumer):
                     #     print(error_message)
 
                     self.continue_conversation(form_object)
-
                     
                 elif data["type"] == "noReply":
                     # base64 디코딩
@@ -269,7 +264,6 @@ class InterviewConsumer(WebsocketConsumer):
                 # 오디오 파일이 없는 경우
                 if data["type"] == "withoutAudio":
                     form_object = Form.objects.get(id=data["formId"])
-
                     # 기본 튜닝
                     self.deep_interview_tuning(
                         form_object.sector_name,
@@ -300,7 +294,6 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 답변 테이블에 추가
                     Answer.objects.create(content=transcription, question_id=last_question, recode_file=audio_file_url)
-                    print(transcription)
 
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
@@ -490,6 +483,7 @@ class InterviewConsumer(WebsocketConsumer):
             messages=self.conversation,
             temperature=0.9,
             stream=True,
+            max_tokens=300
         ):
             finish_reason = chunk.choices[0].finish_reason
             if chunk.choices[0].finish_reason == "stop":
@@ -501,7 +495,7 @@ class InterviewConsumer(WebsocketConsumer):
             messages += message
             # 메시지를 클라이언트로 바로 전송
             self.send(json.dumps({"message": message, "finish_reason": finish_reason}))
-
+        print(self.conversation)
         Question.objects.create(content=messages, form_id=form_object)
     
     # 기본 면접 한글자 단위로 보내기
@@ -537,21 +531,41 @@ class InterviewConsumer(WebsocketConsumer):
         pick_question = []
         while True:
             basic_questions_list = [
-                "우리 회사에 지원한 동기가 무엇입니까?",
-                "자신의 장점과 단점에 대해 이야기해보세요.",
-                "최근에 읽은 책이나 영화는 무엇입니까?",
-                "본인의 취미나 특기가 무엇입니까?",
-                "자신만에 스트레스 해소법은 무엇입니까?",
-                "5년 뒤, 10년 뒤 자신의 모습이 어떨 것 같습니까?",
-                "가장 존경하는 인물은 누구입니까?",
-                "본인이 추구하는 가치나 생활신조, 인생관, 좌우명은 무엇입니까?",
-                "자기 계발을 위해 무엇을 합니까?",
+                "자신의 인생에서 실패했던 경험을 이야기해보세요.",
+                "인생에서 가장 열정적이었던 순간은 언제였나요?",
+                "친구들은 당신을 어떤 사람이라고 말하나요?",
+                "본인의 장점과 단점에 대해 이야기 해보세요.",
+                "우리가 당신을 뽑아야 하는 이유는 무엇인가요?",
+                "본인의 직업관은 무엇인가요?",
+                "인생에 있어서 가장 기억에 남는 순간은 언제인가요?",
+                "회사를 알게 된 계기가 무엇인가요?",
+                "본인이 우리 회사에 어떤 도움을 줄 수 있을 것이라 생각하시나요?",
+                "면접을 본 다른 기업이 있나요?",
+                "회사 근무를 하면서 가장 중요하다고 생각하는 것이 무엇인가요?",
+                "해당 직무에서 필요한 역량이 무엇이라 생각하시나요?",
+                "우리 회사의 최근 이슈에 대해 찾아본 것이 있나요?",
+                "회사의 인재상 중 어떤 점이 본인과 부합한다고 생각하시나요?",
+                "고객이 불만사항을 제기하면 어떻게 대처하실껀가요?",
+                "상사가 주말 근무, 야근을 지시한다면 어떻게 할 것인가요?",
+                "해당 직무에서 필요한 자질 중 어떤 점이 부합 하다고 생각하시나요??",
+                "직무와 관련하여 최근 관심 있는 이슈는 무엇인지 설명해 보세요",
+                "취미 혹은 스트레스를 해소하는 방법은 무엇인가요?",
+                "업무 하면서 가장 크게 실패했던 경험은 무엇인가요?",
+                "추구하는 커리어의 목표는 무엇인가요?",
+                "본인만의 업무 상 경쟁력은 무엇인가요?",
+                "어떤 사람들과 일할 때 시너지가 나나요?",
+                "회사에서 가장 힘들었던 경험은 무엇인가요?"
+                "우리 회사에 지원한 동기가 무엇인가요?",
+                "자신만에 스트레스 해소법은 무엇인가요?",
+                "5년 뒤, 10년 뒤 자신의 모습이 어떨 것 같나요?",
+                "가장 존경하는 인물을 말씀해주세요",
+                "본인이 추구하는 가치나 생활신조, 인생관, 좌우명을 말씀해주세요",
+                "자기 계발을 위해 무엇을 하시나요?",
                 "취업기간에 무엇을 하셨나요?",
                 "가장 기억에 남는 갈등 경험을 말해주세요",
                 "가장 필요한 역량은 무엇이라 생각하나요?",
                 "우리 회사의 단점이 무엇이라고 생각하나요?",
                 "성취를 이룬 경험이 있나요? 그 경험을 설명해주세요.",
-                "과거에 어떤 도전적인 상황을 겪었으며, 그 상황에서 어떻게 대응했나요?",
                 ]
 
             question = random.choice(basic_questions_list)
@@ -567,7 +581,6 @@ class InterviewConsumer(WebsocketConsumer):
     def situation_interview_tuning(self, selector_name, job_name, career):
         self.conversation = [
             {
-
                 "role": "system",
                 "content" : 'I am the person who wants to be a'+job_name+'and you are the interviewer. You ask me interview questions about specific situations that might arise while doing that job. Also, the content of the question should be specific and creative. and give me just one. Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". You just give an answer when it works, without explaining how it works and your role. Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Your answer is only in Korean.'
             },
@@ -576,7 +589,6 @@ class InterviewConsumer(WebsocketConsumer):
     
     # 심층 면접 튜닝
     def deep_interview_tuning(self, selector_name, job_name, career, resume):
-        
         self.conversation = [
             {
                 "role": "user",
@@ -597,7 +609,7 @@ class InterviewConsumer(WebsocketConsumer):
             }
         ]
         
-        
+    # 인성 면접 튜닝
     def personal_interview_tuning(self):
         self.conversation = [
             {

@@ -20,7 +20,6 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.decorators import action
 from drf_yasg import openapi
 from django.shortcuts import get_object_or_404
-
 from .models import Question
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -134,9 +133,11 @@ class GPTAnswerView(APIView):
     def post(self, request, *args, **kwargs):
         question_id = request.data.get("question_id")
         question = get_object_or_404(Question, question_id=question_id)
+        form = question.form_id
+        form_id = form.id
 
         # generate_gpt_answer 메소드 불러오기
-        gpt_answer_content = self.generate_gpt_answer(question.content)
+        gpt_answer_content = self.generate_gpt_answer(question.content, form_id)
 
         # GPTAnswer 생성 후 저장
         gpt_answer = GPTAnswer(content=gpt_answer_content, question_id=question)
@@ -145,15 +146,32 @@ class GPTAnswerView(APIView):
         return Response({"message": "GPT 답변 생성 완료"}, status=status.HTTP_201_CREATED)
 
     # GPT 답변 생성 메소드
-    def generate_gpt_answer(self, question_content):
+    def generate_gpt_answer(self, question, form_id):
+        form = Form.objects.get(id=form_id)
+        sector_name = form.sector_name
+        job_name = form.job_name
+        resume = form.resume
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
+            # 너는 면접중인 지원자야. 너의 task는 면접관의 질문에 답하는거야. 질문과 지원자의 정보를 아래 줄테니깐 지원자의 정보를 기반으로 답변을 작성해줘. 질문 : {question}지원 분야 : {sector_name} 직무 : {job_name} 자기소개서 : {resume}
             messages=[
-                {"role": "system", "content": "You are an interviewee applying for the job. You must answer the given question just like an interviewee does. You must provide answer in Korean only."},
-                {"role": "user", "content": question_content},
+                {
+                    "role": "system",
+                    "content": f"""
+                                    You are a smart and capable applicant who apply {job_name} as {sector_name}.\
+                                    Your task is to answer questions in a readable and professional way. question: {question}\
+                                    If necessary, write an answer by referring to the cover letter. cover letter: {resume}\
+                                    You must provide answer in Korean.\
+                                    Don't generate the questions given earlier, just generate the answers.\
+                                    When you generating an answer, don't explain the answer or question in advance, just create an answer.\
+                                    Create an answer in the same tone as cover letter.\
+                                    Generate answers in 1000 Korean characters.\
+                                    When you answer, don't use numbers like 1, 2, 3 and use conjunctions to make the flow of the text natural.
+                                """
+                },
             ],
         )
-
+        
         gpt_answer_content = response['choices'][0]['message']['content']
 
         return gpt_answer_content
@@ -164,7 +182,7 @@ class GPTAnswerView(APIView):
         operation_description="질문에 해당되는 GPTAnswer 불러오기 (사전 생성 필수)",
         operation_id="GPTAnswer 가져오기",
         manual_parameters=[openapi.Parameter('question_id', openapi.IN_QUERY, description="ID of the question",
-                                             type=openapi.TYPE_INTEGER)],
+                                            type=openapi.TYPE_INTEGER)],
         responses={
             200: openapi.Response(description="GPTAnswer 반환 성공"),
             404: "question_id가 존재하지 않습니다.",
