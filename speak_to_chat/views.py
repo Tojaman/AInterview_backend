@@ -137,7 +137,6 @@ class GPTAnswerView(APIView):
         form_id = form.id
 
         # generate_gpt_answer 메소드 불러오기
-        # 사용자 정보(직종, 경력, 자소서 등) 주기
         gpt_answer_content = self.generate_gpt_answer(question.content, form_id)
 
         # GPTAnswer 생성 후 저장
@@ -151,7 +150,6 @@ class GPTAnswerView(APIView):
         form = Form.objects.get(id=form_id)
         sector_name = form.sector_name
         job_name = form.job_name
-        career = form.career
         resume = form.resume
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
