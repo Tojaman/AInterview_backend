@@ -123,11 +123,12 @@ WSGI_APPLICATION = "ainterview.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
+        # "ENGINE": "mysql.connector.django",
         "NAME": os.environ.get("MYSQL_NAME"),
         "USER": os.environ.get("MYSQL_USER"),
         "PASSWORD": os.environ.get("MYSQL_PASSWORD"),
-        "HOST": os.environ.get("HOST"),
-        "PORT": os.environ.get("PORT")
+        "HOST": "ainterview_db",
+        "PORT": os.environ.get("MYSQL_PORT"),
     }
 }
 
