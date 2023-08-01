@@ -26,6 +26,17 @@ class InterviewConsumer(WebsocketConsumer):
         self.accept()
         # 대화 기록을 저장할 리스트
         self.conversation = []
+        self.default_transcription = []
+        self.situation_transcription = []
+        self.personal_transcription = []
+        
+        self.default_last_question = []
+        self.situation_last_question = []
+        self.personal_last_question = []
+        
+        self.default_audio_file_urls = []
+        self.situation_audio_file_urls = []
+        self.personal_audio_file_urls = []
 
     def disconnect(self, closed_code):
         form_object = Form.objects.get(id=self.form_id)
@@ -78,15 +89,9 @@ class InterviewConsumer(WebsocketConsumer):
             if self.interview_type == "default":
                 print("기본 면접의 경우")
 
-                # 기본 면접 튜닝
-                #self.default_interview_tuning()
-
                 # 오디오 파일이 없는 경우
                 if data["type"] == "withoutAudio":
                     form_object = Form.objects.get(id=data["formId"])
-
-                    # 대화 계속하기
-                    # self.continue_conversation(form_object)
                     
                     # 가장 처음 할 질문
                     first_question = "1분 자기소개를 해주세요."
@@ -105,16 +110,13 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file = ContentFile(audio_data)
                     
                     audio_file_url = get_file_url("audio", audio_file)
+                    self.default_audio_file_urls.append(audio_file_url)
 
                     # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
-                    transcription = process_whisper_data.delay(audio_file_url).get()
+                    self.default_transcription.append(process_whisper_data.delay(audio_file_url))
 
                     # Question 테이블의 마지막 Row 가져오기
-                    last_question = Question.objects.latest("question_id")
-
-                    # 답변 테이블에 추가
-                    Answer.objects.create(content=transcription, question_id=last_question, recode_file=audio_file_url)
-                    print(transcription)
+                    self.default_last_question.append(Question.objects.latest("question_id"))
 
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
@@ -122,12 +124,9 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 기존 questions 데이터를 슬라이싱하여 새롭게 생성된 questions만 가져옴
                     questions_included = questions[self.before_qes:]
-                    #print(questions_included)
 
                     for question in questions_included:
-                        if question.answer is None:
-                            error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
-                            print(error_message)
+                        self.add_question_answer(question.content)
                     
                     # 랜덤으로 질문 뽑기
                     pick_question = self.pick_random_question()
@@ -149,16 +148,15 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 파일 업로드 및 URL 받아오기
                     audio_file_url = get_file_url("audio", audio_file)
+                    self.default_audio_file_urls.append(audio_file_url)
 
                     # celery에 s3_url 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
-                    transcription = process_whisper_data.delay(audio_file_url).get()
-                    print(transcription)
+                    self.default_transcription.append(process_whisper_data.delay(audio_file_url))
+                    # print(transcription)
 
                     # Question 테이블의 마지막 Row 가져오기
-                    last_question = Question.objects.latest("question_id")
+                    self.default_last_question.append(Question.objects.latest("question_id"))
 
-                    # 답변 테이블에 추가
-                    Answer.objects.create(content=transcription, question_id=last_question, recode_file=audio_file_url)
                     self.send(json.dumps({"last_topic_answer":"default_last"}))
 
                     # 이전 질문 개수에 기본면접 질문 개수 더하여 저장
@@ -194,18 +192,14 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file = ContentFile(audio_data)
 
                     # 파일 업로드 및 URL 받아오기
+                    # audio_file_url = get_file_url("audio", audio_file)
                     audio_file_url = get_file_url("audio", audio_file)
+                    self.situation_audio_file_urls.append(audio_file_url)
 
                     # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
-                    transcription = process_whisper_data.delay(audio_file_url).get()
-
-                    # Question 테이블의 마지막 Row 가져오기
-                    last_question = Question.objects.latest("question_id")
-
-                    # 답변 테이블에 추가
-                    Answer.objects.create(
-                        content=transcription, question_id=last_question, recode_file=audio_file_url
-                    )
+                    self.situation_transcription.append(process_whisper_data.delay(audio_file_url))
+                    
+                    self.situation_last_question.append(Question.objects.latest("question_id"))
 
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
@@ -221,11 +215,7 @@ class InterviewConsumer(WebsocketConsumer):
                     )
 
                     for question in questions_included:
-                    #     answer = question.answer
                         self.add_question_answer(question.content)
-                    # except:
-                    #     error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
-                    #     print(error_message)
 
                     self.continue_conversation(form_object)
                     
@@ -239,17 +229,14 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 파일 업로드 및 URL 받아오기
                     audio_file_url = get_file_url("audio", audio_file)
+                    self.situation_audio_file_urls.append(audio_file_url)
 
                     # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
-                    transcription = process_whisper_data.delay(audio_file_url).get()
+                    self.situation_transcription.append(process_whisper_data.delay(audio_file_url))
 
                     # Question 테이블의 마지막 Row 가져오기
-                    last_question = Question.objects.latest("question_id")
+                    self.situation_last_question.append(Question.objects.latest("question_id"))
 
-                    # 답변 테이블에 추가
-                    Answer.objects.create(
-                        content=transcription, question_id=last_question, recode_file=audio_file_url
-                    )
                     self.send(json.dumps({"last_topic_answer":"situation_last"}))
 
                     # 이전 질문 개수에 상황면접 질문 개수 누적
@@ -257,7 +244,7 @@ class InterviewConsumer(WebsocketConsumer):
 
             else:
                 pass
-              
+
             # 심층 면접인 경우
             if self.interview_type == "deep":
                 print("심층 면접의 경우")
@@ -301,7 +288,6 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 기존 questions 데이터를 슬라이싱하여 새롭게 생성된 questions만 가져옴
                     questions_included = questions[self.before_qes:]
-                    # print(questions_included)
 
                     self.deep_interview_tuning(
                         form_object.sector_name,
@@ -373,37 +359,25 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 파일 업로드 및 URL 받아오기
                     audio_file_url = get_file_url("audio", audio_file)
+                    self.personal_audio_file_urls.append(audio_file_url)
 
-                    # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
-                    transcription = process_whisper_data.delay(audio_file_url).get()
-
-                    # Question 테이블의 마지막 Row 가져오기
-                    last_question = Question.objects.latest("question_id")
-
-                    # 답변 테이블에 추가
-                    Answer.objects.create(
-                        content=transcription, question_id=last_question, recode_file=audio_file_url
-                    )
-                    print(transcription)
-
+                    # celery에서 비동기적으로 whisper api 요청
+                    self.personal_transcription.append(process_whisper_data.delay(audio_file_url))
+                    
+                    self.personal_last_question.append(Question.objects.latest("question_id"))
+                    
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
                     questions = form_object.questions.all().order_by('question_id')
 
                     # 기존 questions 데이터를 슬라이싱하여 새롭게 생성된 questions만 가져옴
                     questions_included = questions[self.before_qes:]
-                    # print(questions_included)
 
                     self.personal_interview_tuning()
 
                     # question 테이블에서 질문과 답변에 대해 튜닝 과정에 추가함.
-                    # try:
                     for question in questions_included:
-                    #         answer = question.answer
                         self.add_question_answer(question.content)
-                    # except:
-                    #     error_message = "같은 지원 양식의 question 테이블과 answer 테이블의 갯수가 일치하지 않습니다."
-                    #     print(error_message)
 
                     self.continue_conversation(form_object)
 
@@ -418,17 +392,16 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # 파일 업로드 및 URL 받아오기
                     audio_file_url = get_file_url("audio", audio_file)
+                    self.personal_audio_file_urls.append(audio_file_url)
 
                     # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
-                    transcription = process_whisper_data.delay(audio_file_url).get()
-
-                    # Question 테이블의 마지막 Row 가져오기
-                    last_question = Question.objects.latest("question_id")
-
-                    # 답변 테이블에 추가
-                    Answer.objects.create(
-                        content=transcription, question_id=last_question, recode_file=audio_file_url
-                    )
+                    self.personal_transcription.append(process_whisper_data.delay(audio_file_url))
+                    
+                    self.personal_last_question.append(Question.objects.latest("question_id"))
+                    
+                    # 기본, 상황, 성향 면접 Answer 모델에 값 저장
+                    self.add_answer_data()
+                    
                     self.send(json.dumps({"last_topic_answer":"personal_last"}))
 
                     # 이전 질문 개수에 성향면접 질문 개수 누적
@@ -447,6 +420,28 @@ class InterviewConsumer(WebsocketConsumer):
             except:
                 pass
         
+
+    def add_answer_data(self):
+        # 모든 작업이 완료될 때까지 기다림
+        
+        for index, default_task_result in enumerate(self.default_transcription):
+            # default_task_result에 대한 작업 수행
+            default_transcription = default_task_result.get()
+            # Answer 모델에 값을 저장
+            Answer.objects.create(content=default_transcription, question_id=self.default_last_question[index], recode_file=self.default_audio_file_urls[index])
+
+        for index, situation_task_result in enumerate(self.situation_transcription):
+            # situation_task_result에 대한 작업 수행
+            situation_transcription = situation_task_result.get()
+            # Answer 모델에 값을 저장
+            Answer.objects.create(content=situation_transcription, question_id=self.situation_last_question[index], recode_file=self.situation_audio_file_urls[index])
+
+        for index, personal_task_result in enumerate(self.personal_transcription):
+            # personal_task_result에 대한 작업 수행
+            personal_transcription = personal_task_result.get()
+            # Answer 모델에 값을 저장
+            Answer.objects.create(content=personal_transcription, question_id=self.personal_last_question[index], recode_file=self.personal_audio_file_urls[index])
+
 
     # 질문과 대답 추가
     def add_question_answer(self, question, answer=None):
@@ -472,9 +467,6 @@ class InterviewConsumer(WebsocketConsumer):
                 }
             )
 
-        # existing_content = self.conversation[0]["content"]  # 기존 content 가져오기
-        # new_content = existing_content + " Q. " + question + " A. " + answer
-        # self.conversation[0]["content"] = new_content
 
     def continue_conversation(self, form_object):
         messages = ""
@@ -483,7 +475,6 @@ class InterviewConsumer(WebsocketConsumer):
             messages=self.conversation,
             temperature=0.9,
             stream=True,
-            max_tokens=300
         ):
             finish_reason = chunk.choices[0].finish_reason
             if chunk.choices[0].finish_reason == "stop":
@@ -614,11 +605,6 @@ class InterviewConsumer(WebsocketConsumer):
         self.conversation = [
             {
                 "role": "system",
-                "content" : 'You are a strict interviewer. You will ask the user personality interview questions commonly asked in job interviews. You shouldn\'t make any unnecessary expressions aside from asking questions. I want you to give personality questions for the interviewee. Your task is to simply ask common personality questions that interviewers ask in job interviews. You should only focus on providing questions, and not say any unnecessary expressions. Provide only one question at a time. Do not ever to not include any explanations or additional information in your response. Simply provide the generated question please. Remember to only provide questions that are related to personality. Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". You just give an answer when it works, without explaining how it works and your role. Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Your answer is only in Korean. You must speak only in Korean during the interview. Keep in mind - Don\'t ask the interviewee to introduce himself. Don\'t even greet the interviewee. Just ask interview questions, one at a time." You can ask questions that include personal situations such as "I\'m busy at work, but I have to attend an in-house event. How would you tell the team leader?" or "I met a person I liked at a blind date, but I left my wallet behind." How would you say that?'
+                "content" : 'You are a interviewer. Your task is to generate frequently asked personality interview questions that are similar to the sample questions you\'ll be asked in an interview. Don\'t say anything other than the question. Provide only one question at a time. Do not ever to not include any explanations or additional information in your response. Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Separate "지원자분이" from "지원자분은" and use it in context. Generate Korean questions using natural grammar and context, especially grammatically correct postposition. Keep in mind - Don\'t ask the interviewee to introduce himself. Don\'t even greet the interviewee. example questions : What\'s the most important thing you look for in a friend?, Is there someone you look up to and why?, How do you handle the challenges of working on a team?, Do you think it\'s better to do what you love and what you\'re good at for a living?'
             },
-
-            # {
-            #     "role": "user",
-            #     "content": 'I want you to give personality questions for the interviewee. Your task is to simply ask common personality questions that interviewers ask in job interviews. You should only focus on providing questions, and not say any unnecessary expressions. Provide only one question at a time. Do not ever to not include any explanations or additional information in your response. Simply provide the generated question please. Remember to only provide questions that are related to personality. You must speak only in Korean during the interview. Keep in mind - Don\'t ask the interviewee to introduce himself. Don\'t even greet the interviewee. Just ask interview questions, one at a time.'
-            # }
         ]
