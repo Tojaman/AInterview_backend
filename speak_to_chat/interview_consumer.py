@@ -119,7 +119,8 @@ class InterviewConsumer(WebsocketConsumer):
                     #process_whisper_data.delay(last_question.question_id, audio_file_url)
 
                     # Question 테이블의 마지막 Row 가져오기
-                    self.default_last_questions.append(Question.objects.latest("question_id"))
+                    last_row_per_form = Form.objects.get(id=self.form_id).questions.last()
+                    self.default_last_questions.append(last_row_per_form)
 
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
@@ -157,7 +158,8 @@ class InterviewConsumer(WebsocketConsumer):
                     self.default_transcriptions.append(process_whisper_data.delay(audio_file_url))
 
                     # Question 테이블의 마지막 Row 가져오기
-                    self.default_last_questions.append(Question.objects.latest("question_id"))
+                    last_row_per_form = Form.objects.get(id=self.form_id).questions.last()
+                    self.default_last_questions.append(last_row_per_form)
                     
                     # last_question = Question.objects.latest("question_id")
                     # process_whisper_data.delay(last_question.question_id, audio_file_url)
@@ -212,7 +214,8 @@ class InterviewConsumer(WebsocketConsumer):
                     self.situation_transcriptions.append(process_whisper_data.delay(audio_file_url))
 
                     # Question 테이블의 마지막 Row 가져오기
-                    self.situation_last_questions.append(Question.objects.latest("question_id"))
+                    last_row_per_form = Form.objects.get(id=self.form_id).questions.last()
+                    self.situation_last_questions.append(last_row_per_form)
 
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
@@ -248,7 +251,8 @@ class InterviewConsumer(WebsocketConsumer):
                     self.situation_transcriptions.append(process_whisper_data.delay(audio_file_url))
 
                     # Question 테이블의 마지막 Row 가져오기
-                    self.situation_last_questions.append(Question.objects.latest("question_id"))
+                    last_row_per_form = Form.objects.get(id=self.form_id).questions.last()
+                    self.situation_last_questions.append(last_row_per_form)
                     
                     form_object = Form.objects.get(id=self.form_id)
                     questions = Question.objects.filter(form_id=form_object)
@@ -296,10 +300,10 @@ class InterviewConsumer(WebsocketConsumer):
                     transcription = process_whisper_data.delay(audio_file_url).get()
 
                     # Question 테이블의 마지막 Row 가져오기
-                    last_question = Question.objects.latest("question_id")
+                    last_row_per_form = Form.objects.get(id=self.form_id).questions.last()
 
                     # 답변 테이블에 추가
-                    Answer.objects.create(content=transcription, question_id=last_question, recode_file=audio_file_url)
+                    Answer.objects.create(content=transcription, question_id=last_row_per_form, recode_file=audio_file_url)
 
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
@@ -343,10 +347,10 @@ class InterviewConsumer(WebsocketConsumer):
                     transcription = process_whisper_data.delay(audio_file_url).get()
 
                     # Question 테이블의 마지막 Row 가져오기
-                    last_question = Question.objects.latest("question_id")
-
+                    last_row_per_form = Form.objects.get(id=self.form_id).questions.last()
+                    
                     # 답변 테이블에 추가
-                    Answer.objects.create(content=transcription, question_id=last_question, recode_file=audio_file_url)
+                    Answer.objects.create(content=transcription, question_id=last_row_per_form, recode_file=audio_file_url)
                     self.send(json.dumps({"last_topic_answer":"deep_last"}))
 
                     # 이전 질문 개수에 심층면접 질문 개수 누적
@@ -384,7 +388,8 @@ class InterviewConsumer(WebsocketConsumer):
                     self.personal_transcriptions.append(process_whisper_data.delay(audio_file_url))
 
                     # Question 테이블의 마지막 Row 가져오기
-                    self.personal_last_questions.append(Question.objects.latest("question_id"))
+                    last_row_per_form = Form.objects.get(id=self.form_id).questions.last()
+                    self.personal_last_questions.append(last_row_per_form)
                     
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
@@ -418,7 +423,8 @@ class InterviewConsumer(WebsocketConsumer):
                     self.personal_transcriptions.append(process_whisper_data.delay(audio_file_url))
 
                     # Question 테이블의 마지막 Row 가져오기
-                    self.personal_last_questions.append(Question.objects.latest("question_id"))
+                    last_row_per_form = Form.objects.get(id=self.form_id).questions.last()
+                    self.personal_last_questions.append(last_row_per_form)
                     
                     form_object = Form.objects.get(id=self.form_id)
                     questions = Question.objects.filter(form_id=form_object)
