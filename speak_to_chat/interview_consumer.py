@@ -427,18 +427,21 @@ class InterviewConsumer(WebsocketConsumer):
         for index, default_task_result in enumerate(self.default_transcription):
             # default_task_result에 대한 작업 수행
             default_transcription = default_task_result.get()
+            print(default_transcription)
             # Answer 모델에 값을 저장
             Answer.objects.create(content=default_transcription, question_id=self.default_last_question[index], recode_file=self.default_audio_file_urls[index])
 
         for index, situation_task_result in enumerate(self.situation_transcription):
             # situation_task_result에 대한 작업 수행
             situation_transcription = situation_task_result.get()
+            print(situation_transcription)
             # Answer 모델에 값을 저장
             Answer.objects.create(content=situation_transcription, question_id=self.situation_last_question[index], recode_file=self.situation_audio_file_urls[index])
 
         for index, personal_task_result in enumerate(self.personal_transcription):
             # personal_task_result에 대한 작업 수행
             personal_transcription = personal_task_result.get()
+            print(personal_transcription)
             # Answer 모델에 값을 저장
             Answer.objects.create(content=personal_transcription, question_id=self.personal_last_question[index], recode_file=self.personal_audio_file_urls[index])
 
