@@ -26,13 +26,13 @@ class InterviewConsumer(WebsocketConsumer):
         self.accept()
         # 대화 기록을 저장할 리스트
         self.conversation = []
-        self.default_transcription = []
-        self.situation_transcription = []
-        self.personal_transcription = []
+        self.default_transcriptions = []
+        self.situation_transcriptions = []
+        self.personal_transcriptions = []
         
-        self.default_last_question = []
-        self.situation_last_question = []
-        self.personal_last_question = []
+        self.default_last_questions = []
+        self.situation_last_questions = []
+        self.personal_last_questions = []
         
         self.default_audio_file_urls = []
         self.situation_audio_file_urls = []
@@ -113,10 +113,10 @@ class InterviewConsumer(WebsocketConsumer):
                     self.default_audio_file_urls.append(audio_file_url)
 
                     # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
-                    self.default_transcription.append(process_whisper_data.delay(audio_file_url))
+                    self.default_transcriptions.append(process_whisper_data.delay(audio_file_url))
 
                     # Question 테이블의 마지막 Row 가져오기
-                    self.default_last_question.append(Question.objects.latest("question_id"))
+                    self.default_last_questions.append(Question.objects.latest("question_id"))
 
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
@@ -150,14 +150,18 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file_url = get_file_url("audio", audio_file)
                     self.default_audio_file_urls.append(audio_file_url)
 
-                    # celery에 s3_url 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
-                    self.default_transcription.append(process_whisper_data.delay(audio_file_url))
-                    # print(transcription)
+                    # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
+                    self.default_transcriptions.append(process_whisper_data.delay(audio_file_url))
 
                     # Question 테이블의 마지막 Row 가져오기
-                    self.default_last_question.append(Question.objects.latest("question_id"))
+                    self.default_last_questions.append(Question.objects.latest("question_id"))
+                    
+                    
+
 
                     self.send(json.dumps({"last_topic_answer":"default_last"}))
+                    
+
 
                     # 이전 질문 개수에 기본면접 질문 개수 더하여 저장
                     self.before_qes += self.default_question_num
@@ -197,9 +201,10 @@ class InterviewConsumer(WebsocketConsumer):
                     self.situation_audio_file_urls.append(audio_file_url)
 
                     # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
-                    self.situation_transcription.append(process_whisper_data.delay(audio_file_url))
-                    
-                    self.situation_last_question.append(Question.objects.latest("question_id"))
+                    self.situation_transcriptions.append(process_whisper_data.delay(audio_file_url))
+
+                    # Question 테이블의 마지막 Row 가져오기
+                    self.situation_last_questions.append(Question.objects.latest("question_id"))
 
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
@@ -232,13 +237,13 @@ class InterviewConsumer(WebsocketConsumer):
                     self.situation_audio_file_urls.append(audio_file_url)
 
                     # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
-                    self.situation_transcription.append(process_whisper_data.delay(audio_file_url))
+                    self.situation_transcriptions.append(process_whisper_data.delay(audio_file_url))
 
                     # Question 테이블의 마지막 Row 가져오기
-                    self.situation_last_question.append(Question.objects.latest("question_id"))
-
+                    self.situation_last_questions.append(Question.objects.latest("question_id"))
+                    
                     self.send(json.dumps({"last_topic_answer":"situation_last"}))
-
+                    
                     # 이전 질문 개수에 상황면접 질문 개수 누적
                     self.before_qes += self.situation_question_num
 
@@ -361,10 +366,11 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file_url = get_file_url("audio", audio_file)
                     self.personal_audio_file_urls.append(audio_file_url)
 
-                    # celery에서 비동기적으로 whisper api 요청
-                    self.personal_transcription.append(process_whisper_data.delay(audio_file_url))
-                    
-                    self.personal_last_question.append(Question.objects.latest("question_id"))
+                    # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
+                    self.personal_transcriptions.append(process_whisper_data.delay(audio_file_url))
+
+                    # Question 테이블의 마지막 Row 가져오기
+                    self.personal_last_questions.append(Question.objects.latest("question_id"))
                     
                     # formId를 통해서 question 테이블을 가져옴
                     form_object = Form.objects.get(id=data["formId"])
@@ -395,25 +401,25 @@ class InterviewConsumer(WebsocketConsumer):
                     self.personal_audio_file_urls.append(audio_file_url)
 
                     # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
-                    self.personal_transcription.append(process_whisper_data.delay(audio_file_url))
-                    
-                    self.personal_last_question.append(Question.objects.latest("question_id"))
+                    self.personal_transcriptions.append(process_whisper_data.delay(audio_file_url))
+
+                    # Question 테이블의 마지막 Row 가져오기
+                    self.personal_last_questions.append(Question.objects.latest("question_id"))
                     
                     # 기본, 상황, 성향 면접 Answer 모델에 값 저장
                     self.add_answer_data()
-                    
+                        
                     self.send(json.dumps({"last_topic_answer":"personal_last"}))
+                    
 
                     # 이전 질문 개수에 성향면접 질문 개수 누적
                     self.before_qes += self.personality_question_num
             else:
                 pass
             
-        
             form_object = Form.objects.get(id=self.form_id)
             questions = Question.objects.filter(form_id=form_object)
             last_question = questions.last()
-            
             try:
                 if (last_question.answer and self.question_number == questions.count()):
                     self.send(json.dumps({"last_topic_answer":"last"}))
@@ -424,23 +430,23 @@ class InterviewConsumer(WebsocketConsumer):
     def add_answer_data(self):
         # 모든 작업이 완료될 때까지 기다림
         
-        for index, default_task_result in enumerate(self.default_transcription):
+        for index, default_task_result in enumerate(self.default_transcriptions):
             # default_task_result에 대한 작업 수행
             default_transcription = default_task_result.get()
             # Answer 모델에 값을 저장
-            Answer.objects.create(content=default_transcription, question_id=self.default_last_question[index], recode_file=self.default_audio_file_urls[index])
+            Answer.objects.create(content=default_transcription, question_id=self.default_last_questions[index], recode_file=self.default_audio_file_urls[index])
 
-        for index, situation_task_result in enumerate(self.situation_transcription):
+        for index, situation_task_result in enumerate(self.situation_transcriptions):
             # situation_task_result에 대한 작업 수행
             situation_transcription = situation_task_result.get()
             # Answer 모델에 값을 저장
-            Answer.objects.create(content=situation_transcription, question_id=self.situation_last_question[index], recode_file=self.situation_audio_file_urls[index])
+            Answer.objects.create(content=situation_transcription, question_id=self.situation_last_questions[index], recode_file=self.situation_audio_file_urls[index])
 
-        for index, personal_task_result in enumerate(self.personal_transcription):
+        for index, personal_task_result in enumerate(self.personal_transcriptions):
             # personal_task_result에 대한 작업 수행
             personal_transcription = personal_task_result.get()
             # Answer 모델에 값을 저장
-            Answer.objects.create(content=personal_transcription, question_id=self.personal_last_question[index], recode_file=self.personal_audio_file_urls[index])
+            Answer.objects.create(content=personal_transcription, question_id=self.personal_last_questions[index], recode_file=self.personal_audio_file_urls[index])
 
 
     # 질문과 대답 추가
@@ -575,17 +581,19 @@ class InterviewConsumer(WebsocketConsumer):
                 "role": "system",
                 "content" : 'I am the person who wants to be a'+job_name+'and you are the interviewer. You ask me interview questions about specific situations that might arise while doing that job. Also, the content of the question should be specific and creative. and give me just one. Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". You just give an answer when it works, without explaining how it works and your role. Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Your answer is only in Korean.'
             },
-
         ]
     
     # 심층 면접 튜닝
     def deep_interview_tuning(self, selector_name, job_name, career, resume):
         self.conversation = [
             {
+                "role": "system",
+                "content": f"""Please act as a skillful interviewer. Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". You just give an answer when it works, without explaining how it works and your role. Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Generate up to five questions about the applicant\'s answers. When you move on to the next topic, don\'t say "Let\'s move on" and create a question right away. Don\'t summarize answers or self-introduction or generate understanding, just generate questions. Create only questions, not something like 1. 2. 3. and Question 1. Question 2. Question 3. . Your answer is only in Korean."""
+            },
+            {
                 "role": "user",
-                "content":'function_name: [interviewee_info] input: ["Company", "Job", "Career"] rule: [Please act as a skillful interviewer. We will provide the input form including "Company," "Professional," and "Career." Look at the sentences "Company," "Job," and "Career" to get information about me as an interview applicant. For example, let\'s say company = IT company, job = web front-end developer, experience = newcomer. Then you can recognize that you\'re a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information. Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". You just give an answer when it works, without explaining how it works and your role. Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Your answer is only in Korean.]'
-                # + 'function_name: [aggressive_position] rule: [Ask me questions in a tail-to-tail manner about what I answer. There may be technical questions about the answer, and there may be questions that you, as an interviewer, would dig into the answer.. For example, if the question asks, "What\'s your web framework?" the answer is, "It is React framework." So the new question is, "What do you use as a state management tool in React, and why do you need this?" It should be the same question. If you don\'t have any more questions, move on to the next topic.] '
-                + 'function_name: [self_introduction] input : ["self-introduction"] rule: [We will provide an input form including a "self-introduction." Read this "self-introduction" and extract the content to generate a question. just ask one question. Don\'t ask too long questions. The question must have a definite purpose. and Just ask one question at a time.'
+                "content":'function_name: [interviewee_info] input: ["Company", "Job", "Career"] rule: [We will provide the input form including "Company," "Job," and "Career." Look at the sentences "Company," "Job," and "Career" to get information about me as an interview applicant. For example, let\'s say company = IT company, job = web front-end developer, experience = newcomer. Then you can recognize that you\'re a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information.]'
+                + 'function_name: [self_introduction] input : ["self-introduction"] rule: [We will provide an input form including a "self-introduction." Read this "self-introduction" and extract the content to generate a question. just ask one question. Don\'t ask too long questions. The question must have a definite purpose. and Just ask one question at a time.]'
                 + 'interviewee_info(Company="'
                 + selector_name
                 + '", Job="'
@@ -596,15 +604,32 @@ class InterviewConsumer(WebsocketConsumer):
                 + 'self_introduction("'
                 + resume
                 + '")',
-                # + "aggressive_position()",
             }
         ]
+        #     {
+        #         "role": "user",
+        #         "content":'function_name: [interviewee_info] input: ["Company", "Job", "Career"] rule: [Please act as a skillful interviewer. We will provide the input form including "Company," "Professional," and "Career." Look at the sentences "Company," "Job," and "Career" to get information about me as an interview applicant. For example, let\'s say company = IT company, job = web front-end developer, experience = newcomer. Then you can recognize that you\'re a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information. Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". You just give an answer when it works, without explaining how it works and your role. Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Your answer is only in Korean.]'
+        #         # + 'function_name: [aggressive_position] rule: [Ask me questions in a tail-to-tail manner about what I answer. There may be technical questions about the answer, and there may be questions that you, as an interviewer, would dig into the answer.. For example, if the question asks, "What\'s your web framework?" the answer is, "It is React framework." So the new question is, "What do you use as a state management tool in React, and why do you need this?" It should be the same question. If you don\'t have any more questions, move on to the next topic.] '
+        #         + 'function_name: [self_introduction] input : ["self-introduction"] rule: [We will provide an input form including a "self-introduction." Read this "self-introduction" and extract the content to generate a question. just ask one question. Don\'t ask too long questions. The question must have a definite purpose. and Just ask one question at a time.]'
+        #         + 'interviewee_info(Company="'
+        #         + selector_name
+        #         + '", Job="'
+        #         + job_name
+        #         + '", Career="'
+        #         + career
+        #         + '")'
+        #         + 'self_introduction("'
+        #         + resume
+        #         + '")',
+        #         # + "aggressive_position()",
+        #     }
+        # ]
         
     # 인성 면접 튜닝
     def personal_interview_tuning(self):
         self.conversation = [
             {
                 "role": "system",
-                "content" : 'You are a interviewer. Your task is to generate frequently asked personality interview questions that are similar to the sample questions you\'ll be asked in an interview. Don\'t say anything other than the question. Provide only one question at a time. Do not ever to not include any explanations or additional information in your response. Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Separate "지원자분이" from "지원자분은" and use it in context. Generate Korean questions using natural grammar and context, especially grammatically correct postposition. Keep in mind - Don\'t ask the interviewee to introduce himself. Don\'t even greet the interviewee. example questions : What\'s the most important thing you look for in a friend?, Is there someone you look up to and why?, How do you handle the challenges of working on a team?, Do you think it\'s better to do what you love and what you\'re good at for a living?'
+                "content" : 'You are a interviewer. Your task is to generate frequently asked personality interview questions that are similar to the sample questions you\'ll be asked in an interview. Don\'t say anything other than the question. Provide only one question at a time. Do not ever to not include any explanations or additional information in your response. Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Separate "지원자분이" from "지원자분은" and use it in context. Generate Korean questions using natural grammar and context, especially grammatically correct postposition. Keep in mind - Don\'t ask the interviewee to introduce himself. Don\'t even greet the interviewee. example questions : What\'s the most important thing you look for in a friend?, Is there someone you look up to and why?, How do you handle the challenges of working on a team?, Do you think it\'s better to do what you love and what you\'re good at for a living? '
             },
         ]
