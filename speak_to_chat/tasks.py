@@ -7,6 +7,8 @@ import boto3
 import tempfile
 from urllib.parse import urlparse
 
+from speak_to_chat.models import Answer, Question
+
 load_dotenv()
 openAI_Api_key = os.environ.get('GPT_API_KEY')
 openai.api_key = openAI_Api_key
@@ -48,6 +50,10 @@ def process_whisper_data(audio_file_url):
         with open(temp_file_path, "rb") as temp_file:
                 transcript = openai.Audio.transcribe("whisper-1", temp_file)
         transcription = transcript['text']
+        
+        # last_question = Question.objects.get(question_id=question_id)
+        
+        # Answer.objects.create(content=transcription, question_id=last_question, recode_file=audio_file_url)
         
         temp_file.close()
 

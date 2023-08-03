@@ -114,6 +114,9 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
                     self.default_transcriptions.append(process_whisper_data.delay(audio_file_url))
+                    #last_question = Question.objects.latest("question_id")
+                    
+                    #process_whisper_data.delay(last_question.question_id, audio_file_url)
 
                     # Question 테이블의 마지막 Row 가져오기
                     self.default_last_questions.append(Question.objects.latest("question_id"))
@@ -156,9 +159,14 @@ class InterviewConsumer(WebsocketConsumer):
                     # Question 테이블의 마지막 Row 가져오기
                     self.default_last_questions.append(Question.objects.latest("question_id"))
                     
+                    # last_question = Question.objects.latest("question_id")
+                    # process_whisper_data.delay(last_question.question_id, audio_file_url)
+
+                    form_object = Form.objects.get(id=self.form_id)
+                    questions = Question.objects.filter(form_id=form_object)
+                    if self.question_number == questions.count():
+                        self.add_answer_data()
                     
-
-
                     self.send(json.dumps({"last_topic_answer":"default_last"}))
                     
 
@@ -242,6 +250,12 @@ class InterviewConsumer(WebsocketConsumer):
                     # Question 테이블의 마지막 Row 가져오기
                     self.situation_last_questions.append(Question.objects.latest("question_id"))
                     
+                    form_object = Form.objects.get(id=self.form_id)
+                    questions = Question.objects.filter(form_id=form_object)
+                    if self.question_number == questions.count():
+                        print("상황")
+                        self.add_answer_data()
+                        
                     self.send(json.dumps({"last_topic_answer":"situation_last"}))
                     
                     # 이전 질문 개수에 상황면접 질문 개수 누적
@@ -406,9 +420,12 @@ class InterviewConsumer(WebsocketConsumer):
                     # Question 테이블의 마지막 Row 가져오기
                     self.personal_last_questions.append(Question.objects.latest("question_id"))
                     
-                    # 기본, 상황, 성향 면접 Answer 모델에 값 저장
-                    self.add_answer_data()
-                        
+                    form_object = Form.objects.get(id=self.form_id)
+                    questions = Question.objects.filter(form_id=form_object)
+                    if self.question_number == questions.count():
+                        print("인성")
+                        self.add_answer_data()
+                    
                     self.send(json.dumps({"last_topic_answer":"personal_last"}))
                     
 
@@ -416,6 +433,7 @@ class InterviewConsumer(WebsocketConsumer):
                     self.before_qes += self.personality_question_num
             else:
                 pass
+            
             
             form_object = Form.objects.get(id=self.form_id)
             questions = Question.objects.filter(form_id=form_object)
@@ -425,29 +443,34 @@ class InterviewConsumer(WebsocketConsumer):
                     self.send(json.dumps({"last_topic_answer":"last"}))
             except:
                 pass
+            
         
 
     def add_answer_data(self):
         # 모든 작업이 완료될 때까지 기다림
-        
-        for index, default_task_result in enumerate(self.default_transcriptions):
-            # default_task_result에 대한 작업 수행
-            default_transcription = default_task_result.get()
-            # Answer 모델에 값을 저장
-            Answer.objects.create(content=default_transcription, question_id=self.default_last_questions[index], recode_file=self.default_audio_file_urls[index])
-
-        for index, situation_task_result in enumerate(self.situation_transcriptions):
-            # situation_task_result에 대한 작업 수행
-            situation_transcription = situation_task_result.get()
-            # Answer 모델에 값을 저장
-            Answer.objects.create(content=situation_transcription, question_id=self.situation_last_questions[index], recode_file=self.situation_audio_file_urls[index])
-
-        for index, personal_task_result in enumerate(self.personal_transcriptions):
-            # personal_task_result에 대한 작업 수행
-            personal_transcription = personal_task_result.get()
-            # Answer 모델에 값을 저장
-            Answer.objects.create(content=personal_transcription, question_id=self.personal_last_questions[index], recode_file=self.personal_audio_file_urls[index])
-
+        if len(self.default_transcriptions) > 0:
+            for index, default_task_result in enumerate(self.default_transcriptions):
+                # default_task_result에 대한 작업 수행
+                default_transcription = default_task_result.get()
+                # Answer 모델에 값을 저장
+                Answer.objects.create(content=default_transcription, question_id=self.default_last_questions[index], recode_file=self.default_audio_file_urls[index])
+                self.default_transcriptions = []
+                
+        if len(self.situation_transcriptions) > 0:
+            for index, situation_task_result in enumerate(self.situation_transcriptions):
+                # situation_task_result에 대한 작업 수행
+                situation_transcription = situation_task_result.get()
+                # Answer 모델에 값을 저장
+                Answer.objects.create(content=situation_transcription, question_id=self.situation_last_questions[index], recode_file=self.situation_audio_file_urls[index])
+                self.situation_transcriptions = []
+                
+        if len(self.personal_transcriptions) > 0:
+            for index, personal_task_result in enumerate(self.personal_transcriptions):
+                # personal_task_result에 대한 작업 수행
+                personal_transcription = personal_task_result.get()
+                # Answer 모델에 값을 저장
+                Answer.objects.create(content=personal_transcription, question_id=self.personal_last_questions[index], recode_file=self.personal_audio_file_urls[index])
+                self.personal_transcriptions = []
 
     # 질문과 대답 추가
     def add_question_answer(self, question, answer=None):
