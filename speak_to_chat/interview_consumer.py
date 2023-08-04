@@ -344,7 +344,11 @@ class InterviewConsumer(WebsocketConsumer):
                     last_row_per_form = Form.objects.get(id=self.form_id).questions.last()
                     
                     # 답변 테이블에 추가
-                    Answer.objects.create(content=transcription, question_id=last_row_per_form, recode_file=audio_file_url)
+                    Answer.objects.create(content=transcription, question_id=last_question, recode_file=audio_file_url)
+                    form_object = Form.objects.get(id=self.form_id)
+                    questions = Question.objects.filter(form_id=form_object)
+                    if self.question_number == questions.count():
+                        self.add_answer_data()
                     self.send(json.dumps({"last_topic_answer":"deep_last"}))
 
                     # 이전 질문 개수에 심층면접 질문 개수 누적
@@ -609,10 +613,35 @@ class InterviewConsumer(WebsocketConsumer):
     # 심층 면접 튜닝
     def deep_interview_tuning(self, selector_name, job_name, career, resume):
         self.conversation = [
-            {
-                "role": "system",
-                "content": f"""Please act as a skillful interviewer. Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". You just give an answer when it works, without explaining how it works and your role. Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Generate up to five questions about the applicant\'s answers. When you move on to the next topic, don\'t say "Let\'s move on" and create a question right away. Don\'t summarize answers or self-introduction or generate understanding, just generate questions. Create only questions, not something like 1. 2. 3. and Question 1. Question 2. Question 3. . Your answer is only in Korean."""
-            },
+            # {
+            #     "role": "user",
+            #     "content":'function_name: [interviewee_info] input: ["Company", "Job", "Career"] rule: [Please act as a skillful interviewer. We will provide the input form including "Company," "Professional," and "Career." Look at the sentences "Company," "Job," and "Career" to get information about me as an interview applicant. For example, let\'s say company = IT company, job = web front-end developer, experience = newcomer. Then you can recognize that you\'re a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information. Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". You just give an answer when it works, without explaining how it works and your role. Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Your answer is only in Korean.]'
+            #     # + 'function_name: [aggressive_position] rule: [Ask me questions in a tail-to-tail manner about what I answer. There may be technical questions about the answer, and there may be questions that you, as an interviewer, would dig into the answer.. For example, if the question asks, "What\'s your web framework?" the answer is, "It is React framework." So the new question is, "What do you use as a state management tool in React, and why do you need this?" It should be the same question. If you don\'t have any more questions, move on to the next topic.] '
+            #     + 'function_name: [self_introduction] input : ["self-introduction"] rule: [We will provide an input form including a "self-introduction." Read this "self-introduction" and extract the content to generate a question. just ask one question. Don\'t ask too long questions. The question must have a definite purpose. and Just ask one question at a time.]'
+            #     + 'interviewee_info(Company="'
+            #     + selector_name
+            #     + '", Job="'
+            #     + job_name
+            #     + '", Career="'
+            #     + career
+            #     + '")'
+            #     + 'self_introduction("'
+            #     + resume
+            #     + '")',
+            #     # + "aggressive_position()",
+            # }
+            # {
+            #     "role": "system",
+            #     "content": f"""You are the interviewer for {selector_name}. Your task is to generate questions based on the applicant's selector_name, job_name, career, and resume provided in the back. Generate questions that are tailored to the applicant's answers. Only one question should be generated at a time, and it should be in Korean. Use "applicant" instead of "you".
+            #                 selector_name : {selector_name}
+            #                 job_name : {job_name}
+            #                 career : {career}
+            #                 resume : {resume}"""
+            # }
+            # {
+            #     "role": "system",
+            #     "content": f"""You are the interviewer for {selector_name}. Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". You just give an answer when it works, without explaining how it works and your role. Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Generate up to five questions about the applicant\'s answers. When you move on to the next topic, don\'t say "Let\'s move on" and create a question right away. Don\'t summarize answers or self-introduction or generate understanding, just generate questions. Create only questions, not something like 1. 2. 3. and Question 1. Question 2. Question 3. . Your answer is only in Korean."""
+            # },
             {
                 "role": "system",
                 "content":'function_name: [interviewee_info] input: ["Company", "Job", "Career"] rule: [We will provide the input form including "Company," "Job," and "Career." Look at the sentences "Company," "Job," and "Career" to get information about me as an interview applicant. For example, let\'s say company = IT company, job = web front-end developer, experience = newcomer. Then you can recognize that you\'re a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information.]'
@@ -630,23 +659,7 @@ class InterviewConsumer(WebsocketConsumer):
                 + 'You just give an answer when it works, without explaining how it works and your role. Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Your answer is only in Korean. and give me just one question.'
             }
         ]
-        #     {
-        #         "role": "user",
-        #         "content":'function_name: [interviewee_info] input: ["Company", "Job", "Career"] rule: [Please act as a skillful interviewer. We will provide the input form including "Company," "Professional," and "Career." Look at the sentences "Company," "Job," and "Career" to get information about me as an interview applicant. For example, let\'s say company = IT company, job = web front-end developer, experience = newcomer. Then you can recognize that you\'re a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information. Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". You just give an answer when it works, without explaining how it works and your role. Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Your answer is only in Korean.]'
-        #         # + 'function_name: [aggressive_position] rule: [Ask me questions in a tail-to-tail manner about what I answer. There may be technical questions about the answer, and there may be questions that you, as an interviewer, would dig into the answer.. For example, if the question asks, "What\'s your web framework?" the answer is, "It is React framework." So the new question is, "What do you use as a state management tool in React, and why do you need this?" It should be the same question. If you don\'t have any more questions, move on to the next topic.] '
-        #         + 'function_name: [self_introduction] input : ["self-introduction"] rule: [We will provide an input form including a "self-introduction." Read this "self-introduction" and extract the content to generate a question. just ask one question. Don\'t ask too long questions. The question must have a definite purpose. and Just ask one question at a time.]'
-        #         + 'interviewee_info(Company="'
-        #         + selector_name
-        #         + '", Job="'
-        #         + job_name
-        #         + '", Career="'
-        #         + career
-        #         + '")'
-        #         + 'self_introduction("'
-        #         + resume
-        #         + '")',
-        #         # + "aggressive_position()",
-        #     }
+            
         # ]
         
     # 인성 면접 튜닝
