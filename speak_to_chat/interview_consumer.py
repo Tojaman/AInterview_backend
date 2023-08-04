@@ -114,9 +114,6 @@ class InterviewConsumer(WebsocketConsumer):
 
                     # celery에 temp_file_path 전달해서 get()을 통해 동기적으로 실행(결과가 올 때까지 기다림)
                     self.default_transcriptions.append(process_whisper_data.delay(audio_file_url))
-                    #last_question = Question.objects.latest("question_id")
-                    
-                    #process_whisper_data.delay(last_question.question_id, audio_file_url)
 
                     # Question 테이블의 마지막 Row 가져오기
                     last_row_per_form = Form.objects.get(id=self.form_id).questions.last()
@@ -161,8 +158,6 @@ class InterviewConsumer(WebsocketConsumer):
                     last_row_per_form = Form.objects.get(id=self.form_id).questions.last()
                     self.default_last_questions.append(last_row_per_form)
                     
-                    # last_question = Question.objects.latest("question_id")
-                    # process_whisper_data.delay(last_question.question_id, audio_file_url)
 
                     form_object = Form.objects.get(id=self.form_id)
                     questions = Question.objects.filter(form_id=form_object)
@@ -206,7 +201,6 @@ class InterviewConsumer(WebsocketConsumer):
                     audio_file = ContentFile(audio_data)
 
                     # 파일 업로드 및 URL 받아오기
-                    # audio_file_url = get_file_url("audio", audio_file)
                     audio_file_url = get_file_url("audio", audio_file)
                     self.situation_audio_file_urls.append(audio_file_url)
 
@@ -495,7 +489,7 @@ class InterviewConsumer(WebsocketConsumer):
             self.conversation.append(
                 {
                     "role": "user",
-                    "content": answer + "Ask me one question in a tail-to-tail manner about what I answer. There may be technical questions about the answer, and there may be questions that you, as an interviewer, would dig into the answer. If you don\'t have any more questions, move on to the next topic."
+                    "content": "'"+answer+"'"+" is my answer, and you give me a one question with a tail-to-tail in relation to my answer and job."
                 }
             )
         else:
@@ -649,8 +643,8 @@ class InterviewConsumer(WebsocketConsumer):
             #     "content": f"""You are the interviewer for {selector_name}. Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". You just give an answer when it works, without explaining how it works and your role. Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Generate up to five questions about the applicant\'s answers. When you move on to the next topic, don\'t say "Let\'s move on" and create a question right away. Don\'t summarize answers or self-introduction or generate understanding, just generate questions. Create only questions, not something like 1. 2. 3. and Question 1. Question 2. Question 3. . Your answer is only in Korean."""
             # },
             {
-                "role": "user",
-                "content":'function_name: [interviewee_info] input: ["Company", "Job", "Career"] rule: [You are the interviewer for "Company". Also, you, the interviewer, do not say anything outside of the question and use the word "지원자분" instead of "you". You just give an answer when it works, without explaining how it works and your role. Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Generate up to five questions about the applicant\'s answers. When you move on to the next topic, don\'t say "Let\'s move on" and create a question right away. Don\'t summarize answers or self-introduction or generate understanding, just generate questions. Create only questions, not something like 1. 2. 3. and Question 1. Question 2. Question 3. . Your answer is only in Korean. We will provide the input form including "Company," "Job," and "Career." Look at the sentences "Company," "Job," and "Career" to get information about me as an interview applicant. For example, let\'s say company = IT company, job = web front-end developer, experience = newcomer. Then you can recognize that you\'re a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information.]'
+                "role": "system",
+                "content":'function_name: [interviewee_info] input: ["Company", "Job", "Career"] rule: [We will provide the input form including "Company," "Job," and "Career." Look at the sentences "Company," "Job," and "Career" to get information about me as an interview applicant. For example, let\'s say company = IT company, job = web front-end developer, experience = newcomer. Then you can recognize that you\'re a newbie applying to an IT company as a web front-end developer. And you can ask questions that fit this information.]'
                 + 'function_name: [self_introduction] input : ["self-introduction"] rule: [We will provide an input form including a "self-introduction." Read this "self-introduction" and extract the content to generate a question. just ask one question. Don\'t ask too long questions. The question must have a definite purpose. and Just ask one question at a time.]'
                 + 'interviewee_info(Company="'
                 + selector_name
@@ -661,7 +655,8 @@ class InterviewConsumer(WebsocketConsumer):
                 + '")'
                 + 'self_introduction("'
                 + resume
-                + '")',
+                + '")'
+                + 'You just give an answer when it works, without explaining how it works and your role. Do not put formulas or descriptions such as "Interviewer:" and "Question:" before questions. Your answer is only in Korean. and give me just one question.'
             }
         ]
             
